@@ -1,6 +1,6 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * App color palette for light and dark themes.
+ * AuthColors contains colors specific to authentication screens.
  */
 
 import { Platform } from 'react-native';
@@ -27,15 +27,41 @@ export const Colors = {
   },
 };
 
+// Authentication screen colors based on design
+export const AuthColors = {
+  // Gradient colors for Get Started screen
+  gradientStart: '#E8996E',
+  gradientEnd: '#A75B58',
+  
+  // Primary button
+  primaryButton: '#C1766B',
+  primaryButtonText: '#FFFFFF',
+  
+  // Secondary button (Get Started)
+  secondaryButton: '#F5F5F5',
+  secondaryButtonText: '#4A4A4A',
+  
+  // Input fields
+  inputBackground: '#FFFFFF',
+  inputBorder: '#E0E0E0',
+  inputText: '#333333',
+  inputPlaceholder: '#9E9E9E',
+  
+  // Labels and text
+  labelText: '#FFFFFF',
+  titleText: '#FFFFFF',
+  subtitleText: 'rgba(255, 255, 255, 0.8)',
+  linkText: '#FFFFFF',
+  
+  // Overlay for background image
+  overlay: 'rgba(0, 0, 0, 0.3)',
+};
+
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
