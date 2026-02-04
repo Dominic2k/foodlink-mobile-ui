@@ -3,8 +3,10 @@
  */
 
 export interface User {
-  email: string;
-  fullName: string;
+  email?: string;
+  fullName?: string;
+  username?: string;
+  role?: string;
   isAdmin?: boolean;
 }
 
@@ -19,13 +21,21 @@ export interface RegisterRequest {
   password: string;
 }
 
-// Backend RegisterResponse structure (inside data field)
+// Backend RegisterResponse structure
 export interface RegisterResponseData {
   accessToken: string;
   tokenType: string;
   email: string;
   fullName: string;
   isAdmin: boolean;
+}
+
+// Backend LoginResponse structure
+export interface LoginResponseData {
+  accessToken: string;
+  tokenType: string;
+  username: string;
+  role: string;
 }
 
 // Backend BaseResponse wrapper
@@ -35,8 +45,8 @@ export interface BaseResponse<T> {
   success: boolean;
 }
 
-// Combined type for register/login API responses
-export type AuthApiResponse = BaseResponse<RegisterResponseData>;
+export type RegisterApiResponse = BaseResponse<RegisterResponseData>;
+export type LoginApiResponse = BaseResponse<LoginResponseData>;
 
 export interface AuthState {
   user: User | null;

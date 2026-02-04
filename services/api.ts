@@ -63,6 +63,15 @@ class ApiClient {
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
+
+  // For logout API that needs explicit token in header
+  async postWithAuth<T>(endpoint: string, data: unknown, token: string): Promise<T> {
+    return this.request<T>(endpoint, { 
+      method: 'POST', 
+      body: data,
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  }
 }
 
 export const api = new ApiClient(API_BASE_URL);

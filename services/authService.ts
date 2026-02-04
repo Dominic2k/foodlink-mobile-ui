@@ -3,22 +3,24 @@
  */
 
 import { api } from './api';
-import { LoginRequest, RegisterRequest, AuthApiResponse, User } from '@/types/auth';
+import { 
+  LoginRequest, 
+  RegisterRequest, 
+  RegisterApiResponse, 
+  LoginApiResponse,
+  BaseResponse 
+} from '@/types/auth';
 
 export const authService = {
-  async login(credentials: LoginRequest): Promise<AuthApiResponse> {
-    return api.post<AuthApiResponse>('/auth/login', credentials);
+  async login(credentials: LoginRequest): Promise<LoginApiResponse> {
+    return api.post<LoginApiResponse>('/auth/login', credentials);
   },
 
-  async register(data: RegisterRequest): Promise<AuthApiResponse> {
-    return api.post<AuthApiResponse>('/auth/register', data);
+  async register(data: RegisterRequest): Promise<RegisterApiResponse> {
+    return api.post<RegisterApiResponse>('/auth/register', data);
   },
 
-  async getCurrentUser(): Promise<User> {
-    return api.get<User>('/auth/me');
-  },
-
-  async logout(): Promise<void> {
-    api.setToken(null);
+  async logout(token: string): Promise<BaseResponse<string>> {
+    return api.postWithAuth<BaseResponse<string>>('/auth/logout', {}, token);
   },
 };

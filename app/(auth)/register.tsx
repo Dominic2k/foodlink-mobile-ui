@@ -27,7 +27,6 @@ export default function RegisterScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleRegister = async () => {
-    // Validate inputs
     const fullNameError = validation.getFullNameError(fullName);
     const emailError = validation.getEmailError(email);
     const passwordError = validation.getPasswordError(password);
@@ -40,7 +39,6 @@ export default function RegisterScreen() {
     try {
       setIsSubmitting(true);
       await register(fullName, email, password);
-      // AuthContext will automatically redirect to (tabs) on success
     } catch (error: any) {
       Alert.alert('Registration Failed', error.message || 'Something went wrong. Please try again.');
     } finally {

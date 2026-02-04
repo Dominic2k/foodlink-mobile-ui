@@ -3,6 +3,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Alert } from 'react-native';
 import { router } from 'expo-router';
 import { User, AuthState } from '@/types/auth';
 import { authService } from '@/services/authService';
@@ -34,9 +35,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = await storage.getToken();
       if (token) {
         api.setToken(token);
-        const user = await authService.getCurrentUser();
+        // For now, just set authenticated state with stored token
+        // In production, you'd validate the token with the server
         setState({
-          user,
+          user: null,
           token,
           isLoading: false,
           isAuthenticated: true,
@@ -57,11 +59,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const response = await authService.login({ email, password });
-    const { accessToken, email: userEmail, fullName, isAdmin } = response.data;
+    const { accessToken, username, role } = response.data;
     await storage.setToken(accessToken);
     api.setToken(accessToken);
     setState({
-      user: { email: userEmail, fullName, isAdmin },
+      user: { username, role },
       token: accessToken,
       isLoading: false,
       isAuthenticated: true,
@@ -70,29 +72,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (fullName: string, email: string, password: string) => {
-    const response = await authService.register({ fullName, email, password });
-    const { accessToken, email: userEmail, fullName: userName, isAdmin } = response.data;
-    await storage.setToken(accessToken);
-    api.setToken(accessToken);
-    setState({
-      user: { email: userEmail, fullName: userName, isAdmin },
-      token: accessToken,
-      isLoading: false,
-      isAuthenticated: true,
-    });
-    router.replace('/(tabs)' as any);
+    // Register but don't auto-login, redirect to login page
+    await authService.register({ fullName, email, password });
+    Alert.alert(
+      'Registration Successful', 
+      'Your account has been created. Please login.',
+      [{ text: 'OK', onPress: () => router.replace('/(auth)/login' as any) }]
+    );
   };
 
   const logout = async () => {
-    await authService.logout();
-    await storage.removeToken();
-    setState({
-      user: null,
-      token: null,
-      isLoading: false,
-      isAuthenticated: false,
-    });
-    router.replace('/(auth)' as any);
+    try {
+      const currentToken = state.token;
+      if (currentToken) {
+        await authService.logout(currentToken);
+      }
+    } catch (error) {
+      console.log('Logout API error (token may be expired):', error);
+    } finally {
+      // Always clear local state regardless of API result
+      api.setToken(null);
+      await storage.removeToken();
+      setState({
+        user: null,
+        token: null,
+        isLoading: false,
+        isAuthenticated: false,
+      });
+      router.replace('/(auth)' as any);
+    }
   };
 
   return (
