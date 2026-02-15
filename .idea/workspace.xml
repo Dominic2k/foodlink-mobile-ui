@@ -5,20 +5,38 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4d04d2b4-4191-447a-bed8-597b84bc0046" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app.json" beforeDir="false" afterPath="$PROJECT_DIR$/app.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(auth)/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(auth)/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(auth)/login.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(auth)/login.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(auth)/register.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(auth)/register.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/(tabs)/_layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(tabs)/_layout.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(tabs)/explore.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(tabs)/edit-family-member.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(tabs)/edit-family-member.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(tabs)/family-members.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(tabs)/family-members.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/(tabs)/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(tabs)/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(tabs)/notification.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(tabs)/notification.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(tabs)/profile.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(tabs)/profile.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(tabs)/recommendation.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(tabs)/recommendation.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/_layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/_layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/edit-profile.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/edit-profile.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/modal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/HapticTab.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/HapticTab.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/common/ThemedText.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/common/ThemedText.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/common/ThemedView.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/common/ThemedView.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/ui/IconSymbol.ios.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/ui/IconSymbol.ios.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/components/ui/IconSymbol.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/ui/IconSymbol.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/constants/Colors.ts" beforeDir="false" afterPath="$PROJECT_DIR$/constants/Colors.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/contexts/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/contexts/AuthContext.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useColorScheme.ts" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useColorScheme.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useColorScheme.web.ts" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useColorScheme.web.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useThemeColor.ts" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useThemeColor.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/services/api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/authService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/authService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/familyService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/familyService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/userService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/userService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/styles/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/styles/auth.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/types/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/types/auth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/storage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/utils/storage.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/validation.ts" beforeDir="false" afterPath="$PROJECT_DIR$/utils/validation.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

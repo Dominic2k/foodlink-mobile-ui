@@ -3,10 +3,10 @@ import React from 'react';
 import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { HapticTab } from '@/shared/components/HapticTab';
+import { IconSymbol } from '@/shared/components/ui/IconSymbol';
+import { Colors } from '@/shared/constants/Colors';
+import { useColorScheme } from '@/shared/hooks/useColorScheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
