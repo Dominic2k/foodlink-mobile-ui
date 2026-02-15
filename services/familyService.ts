@@ -1,0 +1,31 @@
+import { api } from './api';
+import { FamilyMember, FamilyMemberRequest, HealthCondition, BaseResponse } from '../types/auth';
+
+const familyService = {
+  getFamilyMembers: async () => {
+    const res = await api.get<BaseResponse<FamilyMember[]>>('/family');
+    return res.data;
+  },
+
+  addFamilyMember: async (data: FamilyMemberRequest) => {
+    const res = await api.post<BaseResponse<FamilyMember>>('/family', data);
+    return res.data;
+  },
+
+  updateFamilyMember: async (id: string, data: FamilyMemberRequest) => {
+    const res = await api.put<BaseResponse<FamilyMember>>(`/family/${id}`, data);
+    return res.data;
+  },
+
+  deleteFamilyMember: async (id: string) => {
+    const res = await api.delete<BaseResponse<void>>(`/family/${id}`);
+    return res.data;
+  },
+
+  getHealthConditions: async () => {
+    const res = await api.get<BaseResponse<HealthCondition[]>>('/family/conditions');
+    return res.data;
+  },
+};
+
+export default familyService;

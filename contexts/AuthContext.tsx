@@ -5,15 +5,18 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
-import { User, AuthState } from '@/types/auth';
+import { User, AuthState, UserProfile } from '@/types/auth';
 import { authService } from '@/services/authService';
+import { userService } from '@/services/userService';
 import { api } from '@/services/api';
 import { storage } from '@/utils/storage';
 
 interface AuthContextType extends AuthState {
+  profile: UserProfile | null;
   login: (email: string, password: string) => Promise<void>;
   register: (fullName: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: true,
     isAuthenticated: false,
   });
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     loadStoredAuth();
@@ -35,14 +39,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = await storage.getToken();
       if (token) {
         api.setToken(token);
-        // For now, just set authenticated state with stored token
-        // In production, you'd validate the token with the server
         setState({
           user: null,
           token,
           isLoading: false,
           isAuthenticated: true,
         });
+        // Load profile in background
+        try {
+          const res = await userService.getProfile();
+          setProfile(res.data);
+        } catch {
+          // Token might be expired, clear auth
+          api.setToken(null);
+          await storage.removeToken();
+          setState({
+            user: null,
+            token: null,
+            isLoading: false,
+            isAuthenticated: false,
+          });
+        }
       } else {
         setState(prev => ({ ...prev, isLoading: false }));
       }
@@ -68,15 +85,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading: false,
       isAuthenticated: true,
     });
+    // Load profile after login
+    try {
+      const profileRes = await userService.getProfile();
+      setProfile(profileRes.data);
+    } catch {}
     router.replace('/(tabs)' as any);
   };
 
   const register = async (fullName: string, email: string, password: string) => {
-    // Register but don't auto-login, redirect to login page
     await authService.register({ fullName, email, password });
     Alert.alert(
-      'Registration Successful', 
-      'Your account has been created. Please login.',
+      'Đăng ký thành công',
+      'Tài khoản đã được tạo. Vui lòng đăng nhập.',
       [{ text: 'OK', onPress: () => router.replace('/(auth)/login' as any) }]
     );
   };
@@ -90,9 +111,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.log('Logout API error (token may be expired):', error);
     } finally {
-      // Always clear local state regardless of API result
       api.setToken(null);
       await storage.removeToken();
+      setProfile(null);
       setState({
         user: null,
         token: null,
@@ -103,8 +124,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshProfile = async () => {
+    try {
+      const res = await userService.getProfile();
+      setProfile(res.data);
+    } catch (error) {
+      console.error('Failed to refresh profile:', error);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout }}>
+    <AuthContext.Provider value={{ ...state, profile, login, register, logout, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

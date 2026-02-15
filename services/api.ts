@@ -41,8 +41,16 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(error.message || `HTTP ${response.status}`);
+      const responseText = await response.text();
+      console.error(`[API ERROR] ${config.method} ${endpoint} -> ${response.status}: ${responseText}`);
+      let errorMessage = `HTTP ${response.status}`;
+      try {
+        const errorData = JSON.parse(responseText);
+        errorMessage = errorData.message || errorMessage;
+      } catch {
+        errorMessage = responseText || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
 
     return response.json();
