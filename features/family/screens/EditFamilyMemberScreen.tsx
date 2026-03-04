@@ -13,7 +13,10 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { familyService } from '@/features/family/services/familyService';
-import { Relationship, Gender, ActivityLevel, HealthCondition, FamilyMemberRequest } from '@/features/family/types';
+import {
+  Relationship, Gender, ActivityLevel, Severity,
+  HealthCondition, Ingredient, AllergyRequest, FamilyMemberRequest,
+} from '@/features/family/types';
 
 const RELATIONSHIPS: { value: Relationship; label: string }[] = [
   { value: 'father', label: 'Bố' },
@@ -34,6 +37,12 @@ const ACTIVITY_LEVELS: { value: ActivityLevel; label: string }[] = [
   { value: 'high', label: 'Cao' },
 ];
 
+const SEVERITIES: { value: Severity; label: string; color: string }[] = [
+  { value: 'mild', label: 'Nhẹ', color: '#66BB6A' },
+  { value: 'medium', label: 'Trung bình', color: '#FFA726' },
+  { value: 'severe', label: 'Nghiêm trọng', color: '#EF5350' },
+];
+
 const INITIAL_FORM: FamilyMemberRequest = {
   displayName: '',
   relationship: 'other',
@@ -44,6 +53,7 @@ const INITIAL_FORM: FamilyMemberRequest = {
   activityLevel: 'medium',
   healthNotes: '',
   conditionIds: [],
+  allergies: [],
 };
 
 export default function EditFamilyMemberScreen() {
@@ -54,6 +64,7 @@ export default function EditFamilyMemberScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [conditions, setConditions] = useState<HealthCondition[]>([]);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   
   const [form, setForm] = useState<FamilyMemberRequest>(INITIAL_FORM);
 
@@ -61,12 +72,14 @@ export default function EditFamilyMemberScreen() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [allConditions, members] = await Promise.all([
+      const [allConditions, allIngredients, members] = await Promise.all([
         familyService.getHealthConditions(),
+        familyService.getIngredients(),
         isEdit ? familyService.getFamilyMembers() : Promise.resolve([]),
       ]);
       
       setConditions(allConditions);
+      setIngredients(allIngredients);
 
       if (isEdit) {
         const member = members.find((m: any) => m.id === id);
@@ -81,6 +94,10 @@ export default function EditFamilyMemberScreen() {
             activityLevel: member.activityLevel,
             healthNotes: member.healthNotes || '',
             conditionIds: member.healthConditions.map((c: any) => c.id),
+            allergies: member.allergies?.map((a: any) => ({
+              ingredientId: a.ingredientId,
+              severity: a.severity,
+            })) || [],
           });
         }
       } else {
@@ -153,6 +170,28 @@ export default function EditFamilyMemberScreen() {
       current.add(conditionId);
     }
     setForm({ ...form, conditionIds: Array.from(current) });
+  };
+
+  const toggleAllergy = (ingredientId: string) => {
+    const allergies = [...(form.allergies || [])];
+    const idx = allergies.findIndex(a => a.ingredientId === ingredientId);
+    if (idx >= 0) {
+      allergies.splice(idx, 1);
+    } else {
+      allergies.push({ ingredientId, severity: 'medium' });
+    }
+    setForm({ ...form, allergies });
+  };
+
+  const updateAllergySeverity = (ingredientId: string, severity: Severity) => {
+    const allergies = (form.allergies || []).map(a =>
+      a.ingredientId === ingredientId ? { ...a, severity } : a
+    );
+    setForm({ ...form, allergies });
+  };
+
+  const getAllergyForIngredient = (ingredientId: string): AllergyRequest | undefined => {
+    return (form.allergies || []).find(a => a.ingredientId === ingredientId);
   };
 
   if (loading) {
@@ -305,6 +344,59 @@ export default function EditFamilyMemberScreen() {
         </View>
       </View>
 
+      {/* Allergy Section */}
+      <View style={styles.section}>
+        <Text style={styles.label}>Nguyên liệu dị ứng</Text>
+        <Text style={styles.sublabel}>Chọn nguyên liệu mà thành viên bị dị ứng và mức độ</Text>
+        <View style={styles.allergyContainer}>
+          {ingredients.map((ingredient) => {
+            const allergy = getAllergyForIngredient(ingredient.id);
+            const isSelected = !!allergy;
+            return (
+              <View key={ingredient.id} style={styles.allergyItem}>
+                <TouchableOpacity
+                  style={[styles.allergyChip, isSelected && styles.allergyChipActive]}
+                  onPress={() => toggleAllergy(ingredient.id)}
+                >
+                  <MaterialCommunityIcons
+                    name={isSelected ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                    size={18}
+                    color={isSelected ? '#EF5350' : '#BDBDBD'}
+                  />
+                  <Text style={[styles.allergyChipText, isSelected && styles.allergyChipTextActive]}>
+                    {ingredient.name}
+                  </Text>
+                </TouchableOpacity>
+                {isSelected && (
+                  <View style={styles.severityRow}>
+                    {SEVERITIES.map((s) => (
+                      <TouchableOpacity
+                        key={s.value}
+                        style={[
+                          styles.severityChip,
+                          allergy?.severity === s.value && { backgroundColor: s.color + '20', borderColor: s.color },
+                        ]}
+                        onPress={() => updateAllergySeverity(ingredient.id, s.value)}
+                      >
+                        <View style={[styles.severityDot, { backgroundColor: s.color }]} />
+                        <Text
+                          style={[
+                            styles.severityChipText,
+                            allergy?.severity === s.value && { color: s.color, fontWeight: '600' },
+                          ]}
+                        >
+                          {s.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      </View>
+
       <View style={styles.section}>
         <Text style={styles.label}>Ghi chú sức khỏe</Text>
         <TextInput
@@ -361,6 +453,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
+  },
+  sublabel: {
+    fontSize: 12,
+    color: '#9E9E9E',
+    marginBottom: 12,
   },
   input: {
     backgroundColor: '#F5F5F5',
@@ -453,6 +550,56 @@ const styles = StyleSheet.create({
   conditionChipTextActive: {
     color: '#EF6C00',
     fontWeight: '600',
+  },
+  // Allergy styles
+  allergyContainer: {
+    gap: 4,
+  },
+  allergyItem: {
+    marginBottom: 8,
+  },
+  allergyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  allergyChipActive: {
+    // active state handled by icon color
+  },
+  allergyChipText: {
+    fontSize: 14,
+    color: '#757575',
+    marginLeft: 8,
+  },
+  allergyChipTextActive: {
+    color: '#333',
+    fontWeight: '500',
+  },
+  severityRow: {
+    flexDirection: 'row',
+    marginLeft: 30,
+    marginTop: 4,
+  },
+  severityChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginRight: 8,
+  },
+  severityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 4,
+  },
+  severityChipText: {
+    fontSize: 11,
+    color: '#757575',
   },
   saveButton: {
     backgroundColor: '#FF6B6B',
