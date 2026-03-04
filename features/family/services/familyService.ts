@@ -1,6 +1,6 @@
 import { api } from '@/core/api/client';
 import { BaseResponse } from '@/core/api/types';
-import { FamilyMember, FamilyMemberRequest, HealthCondition } from '@/features/family/types';
+import { FamilyMember, FamilyMemberRequest, HealthCondition, Ingredient } from '@/features/family/types';
 
 export const familyService = {
   getFamilyMembers: async () => {
@@ -25,6 +25,11 @@ export const familyService = {
 
   getHealthConditions: async () => {
     const res = await api.get<BaseResponse<HealthCondition[]>>('/family/conditions');
+    return res.data;
+  },
+
+  getIngredients: async () => {
+    const res = await api.get<BaseResponse<Ingredient[]>>('/family/ingredients');
     return res.data;
   },
 };
