@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 
 import { ThemedText } from '@/shared/components/common/ThemedText';
 import { ThemedView } from '@/shared/components/common/ThemedView';
@@ -172,6 +173,10 @@ export default function RecommendationScreen() {
     setAppliedScoreMax(undefined);
   };
 
+  const handleOpenDetail = (recipeId: string) => {
+    router.push({ pathname: '/recommendation-detail', params: { recipeId } });
+  };
+
   const renderItem = ({ item }: { item: RecommendationItem }) => {
     const quantity = selectedMap[item.recipeId] ?? 0;
     const label = !item.evaluated ? 'Chua danh gia' : item.suitable ? 'Suitable' : 'Not Suitable';
@@ -179,7 +184,8 @@ export default function RecommendationScreen() {
     const badgeTextStyle = !item.evaluated ? styles.badgeTextPending : item.suitable ? styles.badgeTextOk : styles.badgeTextNo;
 
     return (
-      <ThemedView style={styles.card}>
+      <Pressable onPress={() => handleOpenDetail(item.recipeId)}>
+        <ThemedView style={styles.card}>
         {item.imageUrl ? (
           <Image source={{ uri: item.imageUrl }} style={styles.image} />
         ) : (
@@ -216,7 +222,8 @@ export default function RecommendationScreen() {
             <ThemedText style={styles.qtyText}>{quantity}</ThemedText>
           </View>
         ) : null}
-      </ThemedView>
+        </ThemedView>
+      </Pressable>
     );
   };
 

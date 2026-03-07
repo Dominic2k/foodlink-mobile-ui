@@ -46,6 +46,19 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="recommendation-detail"
+        options={{
+          href: null,
+          headerShown: true,
+          title: 'Chi tiet de xuat',
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 15 }}>
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="notification"
         options={{
           title: 'Notification',

@@ -1,5 +1,6 @@
 import { api } from '@/core/api/client';
 import {
+  RecommendationDetailApiResponse,
   RecommendationFilterOptionsApiResponse,
   RecommendationPageApiResponse,
   RecommendationStatusFilter,
@@ -8,6 +9,11 @@ import {
 export const recommendationService = {
   async getFilterOptions() {
     const res = await api.get<RecommendationFilterOptionsApiResponse>('/recommendations/filter-options');
+    return res.data;
+  },
+
+  async getRecommendationDetail(recipeId: string) {
+    const res = await api.get<RecommendationDetailApiResponse>(`/recommendations/${recipeId}`);
     return res.data;
   },
 
