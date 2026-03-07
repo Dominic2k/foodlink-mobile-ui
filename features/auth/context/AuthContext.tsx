@@ -40,20 +40,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = await storage.getToken();
       if (token) {
         api.setToken(token);
-        setState({
-          user: null,
-          token,
-          isLoading: false,
-          isAuthenticated: true,
-        });
-        // Load profile in background
+        // Verify token before marking session as authenticated
         try {
           const res = await userService.getProfile();
           setProfile(res.data);
+          setState({
+            user: null,
+            token,
+            isLoading: false,
+            isAuthenticated: true,
+          });
         } catch {
-          // Token might be expired, clear auth
+          // Token invalid/expired -> clear local auth
           api.setToken(null);
           await storage.removeToken();
+          setProfile(null);
           setState({
             user: null,
             token: null,
@@ -65,7 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setState(prev => ({ ...prev, isLoading: false }));
       }
     } catch (error) {
+      api.setToken(null);
       await storage.removeToken();
+      setProfile(null);
       setState({
         user: null,
         token: null,
