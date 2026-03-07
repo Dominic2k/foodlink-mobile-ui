@@ -41,7 +41,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="recommendation"
         options={{
-          title: 'Recommend',
+          title: 'Recommendation',
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="fork.knife" color={color} />,
         }}
       />
