@@ -50,6 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const res = await userService.getProfile();
           setProfile(res.data);
+          // Record app visit (fire-and-forget)
+          api.post('/api/visits', {}).catch(() => {});
         } catch {
           // Token might be expired, clear auth
           api.setToken(null);
@@ -91,6 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const profileRes = await userService.getProfile();
       setProfile(profileRes.data);
     } catch {}
+    // Record app visit (fire-and-forget)
+    api.post('/api/visits', {}).catch(() => {});
     router.replace('/(tabs)' as any);
   };
 
