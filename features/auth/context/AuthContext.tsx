@@ -53,9 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Record app visit (fire-and-forget)
           api.post('/api/visits', {}).catch(() => {});
         } catch {
-          // Token might be expired, clear auth
+          // Token invalid/expired -> clear local auth
           api.setToken(null);
           await storage.removeToken();
+          setProfile(null);
           setState({
             user: null,
             token: null,
@@ -67,7 +68,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setState(prev => ({ ...prev, isLoading: false }));
       }
     } catch (error) {
+      api.setToken(null);
       await storage.removeToken();
+      setProfile(null);
       setState({
         user: null,
         token: null,
