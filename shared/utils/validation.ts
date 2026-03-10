@@ -20,30 +20,30 @@ export const validation = {
 
   getEmailError(email: string): string | null {
     if (!email.trim()) {
-      return 'Email is required';
+      return 'Vui lòng nhập email';
     }
     if (!this.isValidEmail(email)) {
-      return 'Please enter a valid email';
+      return 'Email không hợp lệ';
     }
     return null;
   },
 
   getPasswordError(password: string): string | null {
     if (!password) {
-      return 'Password is required';
+      return 'Vui lòng nhập mật khẩu';
     }
     if (password.length < 8) {
-      return 'Password must be at least 8 characters';
+      return 'Mật khẩu phải có ít nhất 8 ký tự';
     }
     return null;
   },
 
   getFullNameError(name: string): string | null {
     if (!name.trim()) {
-      return 'Full name is required';
+      return 'Vui lòng nhập họ và tên';
     }
     if (name.trim().length < 2) {
-      return 'Full name must be at least 2 characters';
+      return 'Họ và tên phải có ít nhất 2 ký tự';
     }
     return null;
   },

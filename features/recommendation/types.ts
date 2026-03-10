@@ -12,6 +12,7 @@ export interface RecommendationItem {
   cookTimeMin?: number | null;
   baseServings?: number | null;
   category?: string | null;
+  dishCategories?: string[];
   evaluated: boolean;
   score: number;
   suitable: boolean;
@@ -27,6 +28,8 @@ export interface RecommendationIngredientDetail {
   category?: string | null;
   quantity?: number | null;
   unit?: string | null;
+  price?: number | null;
+  totalPrice?: number | null;
   optional?: boolean;
   calories?: number | null;
   protein?: number | null;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/shared/components/common/ThemedText';
@@ -10,8 +10,10 @@ import { RecommendationItem } from '@/features/recommendation/types';
 
 export default function RecommendationDetailScreen() {
   const { recipeId } = useLocalSearchParams<{ recipeId?: string }>();
+  const router = useRouter();
   const [item, setItem] = useState<RecommendationItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedInstructions, setExpandedInstructions] = useState(false);
 
   useEffect(() => {
     const loadDetail = async () => {
@@ -46,27 +48,36 @@ export default function RecommendationDetailScreen() {
     return (
       <ThemedView style={styles.centered}>
         <Ionicons name="alert-circle-outline" size={42} color="#C1766B" />
-        <ThemedText style={styles.emptyTitle}>Khong tai duoc chi tiet</ThemedText>
+        <ThemedText style={styles.emptyTitle}>Không tải được chi tiết</ThemedText>
       </ThemedView>
     );
   }
 
-  const statusLabel = !item.evaluated ? 'Chua danh gia' : item.suitable ? 'Suitable' : 'Not Suitable';
+  const statusLabel = !item.evaluated ? 'Chưa đánh giá' : item.suitable ? 'Phù hợp' : 'Không phù hợp';
   const statusStyle = !item.evaluated ? styles.statusPending : item.suitable ? styles.statusSuitable : styles.statusUnsuitable;
   const statusTextStyle = !item.evaluated ? styles.statusPendingText : item.suitable ? styles.statusSuitableText : styles.statusUnsuitableText;
   const ingredients = item.ingredients ?? [];
 
   const fmt = (value?: number | null) => (typeof value === 'number' ? value.toFixed(2) : '--');
+  
+  const formatCategoryLabel = (value: string) => {
+    if (!value) return 'Other';
+    return value
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {item.imageUrl ? (
-        <Image source={{ uri: item.imageUrl }} style={styles.heroImage} />
-      ) : (
-        <View style={[styles.heroImage, styles.heroFallback]}>
-          <Ionicons name="restaurant-outline" size={44} color="#C1766B" />
-        </View>
-      )}
+    <View style={styles.container}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
+        {item.imageUrl ? (
+          <Image source={{ uri: item.imageUrl }} style={styles.heroImage} />
+        ) : (
+          <View style={[styles.heroImage, styles.heroFallback]}>
+            <Ionicons name="restaurant-outline" size={44} color="#C1766B" />
+          </View>
+        )}
 
       <ThemedView style={styles.card}>
         <ThemedText style={styles.name}>{item.recipeName}</ThemedText>
@@ -82,84 +93,117 @@ export default function RecommendationDetailScreen() {
           </ThemedText>
         </View>
 
+        <View style={styles.categoriesRow}>
+          {item.dishCategories && item.dishCategories.map(cat => (
+            <View key={cat} style={[styles.categoryBadge, { backgroundColor: '#E2F1E7', borderColor: '#B5D8C1' }]}>
+              <Ionicons name="restaurant-outline" size={12} color="#2C5C3F" />
+              <ThemedText style={[styles.categoryBadgeText, { color: '#2C5C3F' }]}>{cat}</ThemedText>
+            </View>
+          ))}
+          {item.category && item.category !== 'other' ? (
+            <View style={styles.categoryBadge}>
+              <Ionicons name="pricetag-outline" size={12} color="#8F4D44" />
+              <ThemedText style={styles.categoryBadgeText}>{formatCategoryLabel(item.category)}</ThemedText>
+            </View>
+          ) : null}
+        </View>
+
         <View style={styles.recipeInfoRow}>
           <View style={styles.recipeInfoChip}>
             <Ionicons name="time-outline" size={14} color="#8F4D44" />
-            <ThemedText style={styles.recipeInfoText}>Prep {item.prepTimeMin ?? '--'} min</ThemedText>
+            <ThemedText style={styles.recipeInfoText}>Chuẩn bị {item.prepTimeMin ?? '--'} phút</ThemedText>
           </View>
           <View style={styles.recipeInfoChip}>
             <Ionicons name="flame-outline" size={14} color="#8F4D44" />
-            <ThemedText style={styles.recipeInfoText}>Cook {item.cookTimeMin ?? '--'} min</ThemedText>
+            <ThemedText style={styles.recipeInfoText}>Nấu {item.cookTimeMin ?? '--'} phút</ThemedText>
           </View>
           <View style={styles.recipeInfoChip}>
             <Ionicons name="people-outline" size={14} color="#8F4D44" />
-            <ThemedText style={styles.recipeInfoText}>Serves {item.baseServings ?? '--'}</ThemedText>
+            <ThemedText style={styles.recipeInfoText}>Khẩu phần {item.baseServings ?? '--'}</ThemedText>
           </View>
         </View>
 
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Mo ta mon</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Mô tả món</ThemedText>
           <ThemedText style={styles.sectionText}>
-            {item.recipeDescription?.trim() || 'Mon nay chua co mo ta.'}
+            {item.recipeDescription?.trim() || 'Món này chưa có mô tả.'}
           </ThemedText>
         </View>
 
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Ly do danh gia</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Lý do đánh giá</ThemedText>
           <ThemedText style={styles.sectionText}>
-            {item.reason?.trim() || 'Mon nay chua co ly do danh gia.'}
+            {item.reason?.trim() || 'Món này chưa có lý do đánh giá.'}
           </ThemedText>
         </View>
 
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>De xuat cach an</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Đề xuất cách ăn</ThemedText>
           <ThemedText style={styles.sectionText}>
-            {item.suggestion?.trim() || 'Mon nay chua co de xuat cach an.'}
+            {item.suggestion?.trim() || 'Món này chưa có đề xuất cách ăn.'}
           </ThemedText>
         </View>
 
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Huong dan nau</ThemedText>
-          <ThemedText style={styles.sectionText}>
-            {item.recipeInstructions?.trim() || 'Mon nay chua co huong dan nau.'}
+          <ThemedText style={styles.sectionTitle}>Hướng dẫn nấu</ThemedText>
+          <ThemedText
+            style={styles.sectionText}
+            numberOfLines={expandedInstructions ? undefined : 4}
+          >
+            {item.recipeInstructions?.trim() || 'Món này chưa có hướng dẫn nấu.'}
           </ThemedText>
+          {item.recipeInstructions && item.recipeInstructions.trim().length > 0 && (
+            <Pressable
+              style={styles.expandBtn}
+              onPress={() => setExpandedInstructions(prev => !prev)}
+            >
+              <ThemedText style={styles.expandBtnText}>
+                {expandedInstructions ? 'Thu gọn' : 'Xem đầy đủ'}
+              </ThemedText>
+              <Ionicons
+                name={expandedInstructions ? 'chevron-up' : 'chevron-down'}
+                size={14}
+                color="#8F4D44"
+              />
+            </Pressable>
+          )}
         </View>
 
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Tong dinh duong uoc tinh</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Tổng dinh dưỡng ước tính</ThemedText>
           <View style={styles.nutritionGrid}>
             <View style={styles.nutritionCell}>
-              <ThemedText style={styles.nutritionLabel}>Calories</ThemedText>
+              <ThemedText style={styles.nutritionLabel}>Calo</ThemedText>
               <ThemedText style={styles.nutritionValue}>{fmt(item.nutritionSummary?.calories)}</ThemedText>
             </View>
             <View style={styles.nutritionCell}>
-              <ThemedText style={styles.nutritionLabel}>Protein (g)</ThemedText>
+              <ThemedText style={styles.nutritionLabel}>Đạm (g)</ThemedText>
               <ThemedText style={styles.nutritionValue}>{fmt(item.nutritionSummary?.protein)}</ThemedText>
             </View>
             <View style={styles.nutritionCell}>
-              <ThemedText style={styles.nutritionLabel}>Carb (g)</ThemedText>
+              <ThemedText style={styles.nutritionLabel}>Tinh bột (g)</ThemedText>
               <ThemedText style={styles.nutritionValue}>{fmt(item.nutritionSummary?.carb)}</ThemedText>
             </View>
             <View style={styles.nutritionCell}>
-              <ThemedText style={styles.nutritionLabel}>Fat (g)</ThemedText>
+              <ThemedText style={styles.nutritionLabel}>Chất béo (g)</ThemedText>
               <ThemedText style={styles.nutritionValue}>{fmt(item.nutritionSummary?.fat)}</ThemedText>
             </View>
           </View>
           <ThemedText style={styles.coverageText}>
-            Da tinh duoc {item.nutritionSummary?.coveredIngredients ?? 0}/{item.nutritionSummary?.totalIngredients ?? 0} nguyen lieu
+            Đã tính được {item.nutritionSummary?.coveredIngredients ?? 0}/{item.nutritionSummary?.totalIngredients ?? 0} nguyên liệu
           </ThemedText>
         </View>
 
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Nguyen lieu</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Nguyên liệu</ThemedText>
           {ingredients.length === 0 ? (
-            <ThemedText style={styles.sectionText}>Mon nay chua co danh sach nguyen lieu.</ThemedText>
+            <ThemedText style={styles.sectionText}>Món này chưa có danh sách nguyên liệu.</ThemedText>
           ) : (
             ingredients.map((ingredient, index) => (
               <View key={`${ingredient.ingredientId ?? ingredient.ingredientName}-${index}`} style={styles.ingredientRow}>
                 <View style={styles.ingredientTop}>
                   <ThemedText style={styles.ingredientName}>
-                    {ingredient.ingredientName} {ingredient.optional ? '(optional)' : ''}
+                    {ingredient.ingredientName} {ingredient.optional ? '(tùy chọn)' : ''}
                   </ThemedText>
                   <ThemedText style={styles.ingredientQty}>
                     {ingredient.quantity ?? '--'} {ingredient.unit ?? ''}
@@ -174,6 +218,23 @@ export default function RecommendationDetailScreen() {
         </View>
       </ThemedView>
     </ScrollView>
+      <View style={styles.bottomFixedBar}>
+        <Pressable
+          style={styles.buyButton}
+          onPress={() => {
+            if (item.recipeId) {
+              router.push({
+                pathname: '/checkout',
+                params: { recipeId: item.recipeId }
+              });
+            }
+          }}
+        >
+          <Ionicons name="cart-outline" size={20} color="#FFFFFF" />
+          <ThemedText style={styles.buyButtonText}>Mua tất cả nguyên liệu</ThemedText>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -181,6 +242,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F7F7F7',
+  },
+  scrollView: {
+    flex: 1,
   },
   contentContainer: {
     padding: 14,
@@ -264,6 +328,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
   },
+  categoriesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    backgroundColor: '#E8E0F0',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 4,
+  },
+  categoryBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B4C8A',
+  },
   recipeInfoRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -281,6 +367,24 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   recipeInfoText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8F4D44',
+  },
+  expandBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginTop: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: '#FFF7F5',
+    borderWidth: 1,
+    borderColor: '#E8C7C2',
+  },
+  expandBtnText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#8F4D44',
@@ -355,5 +459,26 @@ const styles = StyleSheet.create({
   ingredientNutrition: {
     fontSize: 12,
     color: '#475569',
+  },
+  bottomFixedBar: {
+    padding: 16,
+    paddingBottom: 32,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F0D9D5',
+  },
+  buyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#C1766B',
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  buyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

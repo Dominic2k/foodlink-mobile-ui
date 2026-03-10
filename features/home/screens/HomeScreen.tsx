@@ -11,27 +11,27 @@ export default function HomeScreen() {
     <ScrollView style={styles.container}>
       <ThemedView style={styles.content}>
         <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title">Welcome to FoodLink!</ThemedText>
+          <ThemedText type="title">Chào mừng đến FoodLink!</ThemedText>
           <ThemedText style={styles.emoji}>🍜</ThemedText>
         </ThemedView>
         
         {user?.username && (
           <ThemedView style={styles.userInfo}>
-            <ThemedText type="subtitle">Hello, {user.username}! 👋</ThemedText>
+            <ThemedText type="subtitle">Xin chào, {user.username}! 👋</ThemedText>
           </ThemedView>
         )}
         
         <ThemedView style={styles.stepContainer}>
-          <ThemedText type="subtitle">Your Food Companion</ThemedText>
+          <ThemedText type="subtitle">Bạn đồng hành ẩm thực</ThemedText>
           <ThemedText>
-            Discover amazing food experiences and connect with fellow food lovers.
+            Khám phá trải nghiệm ẩm thực tuyệt vời và kết nối với cộng đồng yêu ẩm thực.
           </ThemedText>
         </ThemedView>
         
         <ThemedView style={styles.stepContainer}>
-          <ThemedText type="subtitle">Getting Started</ThemedText>
+          <ThemedText type="subtitle">Bắt đầu khám phá</ThemedText>
           <ThemedText>
-            Explore the app to find restaurants, recipes, and food recommendations.
+            Khám phá ứng dụng để tìm nhà hàng, công thức nấu ăn và gợi ý món ăn.
           </ThemedText>
         </ThemedView>
       </ThemedView>

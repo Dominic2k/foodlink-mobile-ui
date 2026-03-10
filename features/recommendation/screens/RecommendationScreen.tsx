@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, FlatList, Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
@@ -10,13 +10,13 @@ import { RecommendationItem, RecommendationStatusFilter } from '@/features/recom
 
 const PAGE_SIZE = 8;
 const FILTER_OPTIONS: { key: RecommendationStatusFilter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'suitable', label: 'Suitable' },
-  { key: 'not_suitable', label: 'Not Suitable' },
-  { key: 'unevaluated', label: 'Chua danh gia' },
+  { key: 'all', label: 'Tất cả' },
+  { key: 'suitable', label: 'Phù hợp' },
+  { key: 'not_suitable', label: 'Không phù hợp' },
+  { key: 'unevaluated', label: 'Chưa đánh giá' },
 ];
 
-const DEFAULT_CATEGORY_OPTIONS = [{ key: 'all', label: 'Loai nguyen lieu: All' }];
+const DEFAULT_CATEGORY_OPTIONS = [{ key: 'all', label: 'Loại nguyên liệu: Tất cả' }];
 
 export default function RecommendationScreen() {
   const [items, setItems] = useState<RecommendationItem[]>([]);
@@ -97,11 +97,15 @@ export default function RecommendationScreen() {
     const loadFilterOptions = async () => {
       try {
         const data = await recommendationService.getFilterOptions();
-        const dynamicOptions = (data.ingredientCategories ?? []).map(category => ({
-          key: category,
-          label: formatCategoryLabel(category),
+        const ingredientOpts = (data.ingredientCategories ?? []).map(cat => ({
+          key: cat,
+          label: `Nhóm nguyên liệu: ${formatCategoryLabel(cat)}`,
         }));
-        setCategoryOptions([...DEFAULT_CATEGORY_OPTIONS, ...dynamicOptions]);
+        const dishOpts = (data.dishCategories ?? []).map(cat => ({
+          key: cat,
+          label: `Loại món: ${cat}`,
+        }));
+        setCategoryOptions([...DEFAULT_CATEGORY_OPTIONS, ...dishOpts, ...ingredientOpts]);
       } catch (error) {
         console.error('Failed to load recommendation filter options:', error);
         setCategoryOptions(DEFAULT_CATEGORY_OPTIONS);
@@ -132,13 +136,18 @@ export default function RecommendationScreen() {
   };
 
   const handleOrderNow = () => {
-    Alert.alert('Dat ngay', `Ban da chon ${selectedCount} mon.`, [
-      { text: 'Huy', style: 'cancel' },
-      {
-        text: 'Xac nhan',
-        onPress: () => setSelectedMap({}),
-      },
-    ]);
+    // Map record<recipeId, qty> to an array of objects
+    const selections = Object.entries(selectedMap).map(([recipeId, quantity]) => ({
+      recipeId,
+      quantity,
+    }));
+
+    router.push({
+      pathname: '/checkout',
+      params: { selections: JSON.stringify(selections) },
+    });
+    // Optional: clear selected items on navigate
+    // setSelectedMap({});
   };
 
   const handleFilterChange = (filter: RecommendationStatusFilter) => {
@@ -179,7 +188,7 @@ export default function RecommendationScreen() {
 
   const renderItem = ({ item }: { item: RecommendationItem }) => {
     const quantity = selectedMap[item.recipeId] ?? 0;
-    const label = !item.evaluated ? 'Chua danh gia' : item.suitable ? 'Suitable' : 'Not Suitable';
+    const label = !item.evaluated ? 'Chưa đánh giá' : item.suitable ? 'Phù hợp' : 'Không phù hợp';
     const badgeStyle = !item.evaluated ? styles.badgePending : item.suitable ? styles.badgeOk : styles.badgeNo;
     const badgeTextStyle = !item.evaluated ? styles.badgeTextPending : item.suitable ? styles.badgeTextOk : styles.badgeTextNo;
 
@@ -205,6 +214,19 @@ export default function RecommendationScreen() {
           <View style={styles.metaRow}>
             <Ionicons name="star" size={14} color="#F59E0B" />
             <ThemedText style={styles.score}>{item.evaluated ? `${item.score}/100` : '--/100'}</ThemedText>
+            
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
+              {item.dishCategories && item.dishCategories.map(cat => (
+                <View key={cat} style={[styles.categoryChip, { backgroundColor: '#E2F1E7' }]}>
+                  <ThemedText style={[styles.categoryChipText, { color: '#2C5C3F' }]}>{cat}</ThemedText>
+                </View>
+              ))}
+              {item.category && item.category !== 'other' ? (
+                <View style={styles.categoryChip}>
+                  <ThemedText style={styles.categoryChipText}>{formatCategoryLabel(item.category)}</ThemedText>
+                </View>
+              ) : null}
+            </ScrollView>
           </View>
         </View>
 
@@ -230,12 +252,12 @@ export default function RecommendationScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
-        <ThemedText type="title">Recommendation</ThemedText>
-        <ThemedText style={styles.subtitle}>Danh sach mon phu hop cho ban</ThemedText>
+        <ThemedText type="title">Gợi ý món ăn</ThemedText>
+        <ThemedText style={styles.subtitle}>Danh sách món phù hợp cho bạn</ThemedText>
         <Pressable style={styles.filterToggleBtn} onPress={() => setShowFilterPanel(prev => !prev)}>
           <View style={styles.filterToggleLeft}>
             <Ionicons name="options-outline" size={16} color="#8F4D44" />
-            <ThemedText style={styles.filterToggleText}>Tim & loc</ThemedText>
+            <ThemedText style={styles.filterToggleText}>Tìm & lọc</ThemedText>
           </View>
           <View style={styles.filterToggleRight}>
             {activeAdvancedFilterCount > 0 ? (
@@ -287,7 +309,7 @@ export default function RecommendationScreen() {
                 value={searchInput}
                 onChangeText={setSearchInput}
                 onSubmitEditing={applyAdvancedFilters}
-                placeholder="Tim theo ten mon"
+                placeholder="Tìm theo tên món"
                 placeholderTextColor="#B28B85"
                 style={styles.searchInput}
                 returnKeyType="search"
@@ -303,7 +325,7 @@ export default function RecommendationScreen() {
                 value={scoreMinInput}
                 onChangeText={setScoreMinInput}
                 keyboardType="number-pad"
-                placeholder="Score min"
+                placeholder="Điểm tối thiểu"
                 placeholderTextColor="#B28B85"
                 style={styles.scoreInput}
               />
@@ -311,15 +333,15 @@ export default function RecommendationScreen() {
                 value={scoreMaxInput}
                 onChangeText={setScoreMaxInput}
                 keyboardType="number-pad"
-                placeholder="Score max"
+                placeholder="Điểm tối đa"
                 placeholderTextColor="#B28B85"
                 style={styles.scoreInput}
               />
               <Pressable style={styles.applyBtn} onPress={applyAdvancedFilters}>
-                <ThemedText style={styles.applyBtnText}>Ap dung</ThemedText>
+                <ThemedText style={styles.applyBtnText}>Áp dụng</ThemedText>
               </Pressable>
               <Pressable style={styles.resetBtn} onPress={resetAdvancedFilters}>
-                <ThemedText style={styles.resetBtnText}>Xoa</ThemedText>
+                <ThemedText style={styles.resetBtnText}>Xóa</ThemedText>
               </Pressable>
             </View>
           </View>
@@ -335,8 +357,8 @@ export default function RecommendationScreen() {
           !loading ? (
             <View style={styles.emptyState}>
               <Ionicons name="restaurant-outline" size={48} color="#C1766B" />
-              <ThemedText style={styles.emptyTitle}>Chua co mon de xuat</ThemedText>
-              <ThemedText style={styles.emptyText}>Ban hay chay danh gia lai de lay du lieu recommendation.</ThemedText>
+              <ThemedText style={styles.emptyTitle}>Chưa có món đề xuất</ThemedText>
+              <ThemedText style={styles.emptyText}>Bạn hãy chạy đánh giá lại để lấy dữ liệu gợi ý.</ThemedText>
             </View>
           ) : null
         }
@@ -347,7 +369,7 @@ export default function RecommendationScreen() {
               onPress={() => fetchPage(page + 1, true, statusFilter, categoryFilter, appliedScoreMin, appliedScoreMax, appliedSearch)}
               disabled={loadingMore}
             >
-              <ThemedText style={styles.loadMoreText}>{loadingMore ? 'Dang tai...' : 'Xem them'}</ThemedText>
+              <ThemedText style={styles.loadMoreText}>{loadingMore ? 'Đang tải...' : 'Xem thêm'}</ThemedText>
             </Pressable>
           ) : <View style={{ height: 20 }} />
         }
@@ -359,10 +381,10 @@ export default function RecommendationScreen() {
             <View style={styles.bottomCountBadge}>
               <Ionicons name="basket-outline" size={14} color="#FFFFFF" />
             </View>
-            <ThemedText style={styles.bottomText}>Ban da chon {selectedCount} mon</ThemedText>
+            <ThemedText style={styles.bottomText}>Bạn đã chọn {selectedCount} món</ThemedText>
           </View>
           <Pressable style={styles.orderBtn} onPress={handleOrderNow}>
-            <ThemedText style={styles.orderBtnText}>Dat ngay</ThemedText>
+            <ThemedText style={styles.orderBtnText}>Đặt ngay</ThemedText>
           </Pressable>
         </View>
       ) : null}
@@ -609,6 +631,23 @@ const styles = StyleSheet.create({
   score: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  categoryChip: {
+    marginLeft: 4,
+    backgroundColor: '#E8E0F0',
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 1,
+  },
+  categoryChipText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#6B4C8A',
+  },
+  chipsContainer: {
+    flexDirection: 'row',
+    gap: 4,
+    marginLeft: 4,
   },
   actionGroup: {
     gap: 6,

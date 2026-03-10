@@ -47,7 +47,7 @@ export default function GetStartedScreen() {
           onPress={handleGetStarted}
           activeOpacity={0.8}
         >
-          <Text style={authStyles.secondaryButtonText}>Get Started</Text>
+          <Text style={authStyles.secondaryButtonText}>Bắt đầu</Text>
         </TouchableOpacity>
       </View>
     </LinearGradient>

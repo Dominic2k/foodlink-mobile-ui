@@ -65,4 +65,9 @@ export const recommendationService = {
     const res = await api.get<RecommendationPageApiResponse>(`/recommendations?${params.toString()}`);
     return res.data;
   },
+
+  async aggregateIngredients(selections: { recipeId: string; quantity: number }[]) {
+    const res = await api.post<any>('/recommendations/aggregate-ingredients', selections);
+    return res.data;
+  },
 };
