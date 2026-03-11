@@ -1,12 +1,13 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
 import { ThemedText } from '@/shared/components/common/ThemedText';
 import { ThemedView } from '@/shared/components/common/ThemedView';
+import { useRecommendationRefresh } from '@/features/recommendation/context/RecommendationRefreshContext';
 import { recommendationService } from '@/features/recommendation/services/recommendationService';
-import { RecommendationItem, RecommendationStatusFilter } from '@/features/recommendation/types';
+import { RecommendationEvaluationStatus, RecommendationItem, RecommendationStatusFilter } from '@/features/recommendation/types';
 
 const PAGE_SIZE = 8;
 const FILTER_OPTIONS: { key: RecommendationStatusFilter; label: string }[] = [
@@ -29,12 +30,15 @@ export default function RecommendationScreen() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [categoryOptions, setCategoryOptions] = useState<{ key: string; label: string }[]>(DEFAULT_CATEGORY_OPTIONS);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [openSelector, setOpenSelector] = useState<'status' | 'category' | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [scoreMinInput, setScoreMinInput] = useState('');
   const [scoreMaxInput, setScoreMaxInput] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
   const [appliedScoreMin, setAppliedScoreMin] = useState<number | undefined>(undefined);
   const [appliedScoreMax, setAppliedScoreMax] = useState<number | undefined>(undefined);
+  const [evaluationStatus, setEvaluationStatus] = useState<RecommendationEvaluationStatus>('idle');
+  const { needsRecommendationRefresh, clearRecommendationRefreshNeeded } = useRecommendationRefresh();
 
   const formatCategoryLabel = (value: string) => {
     if (!value) return 'Other';
@@ -43,6 +47,18 @@ export default function RecommendationScreen() {
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   };
+
+  const formatCurrency = (value?: number | null) => {
+    if (typeof value !== 'number') return null;
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const selectedStatusLabel = FILTER_OPTIONS.find(option => option.key === statusFilter)?.label ?? 'Tất cả';
+  const selectedCategoryLabel = categoryOptions.find(option => option.key === categoryFilter)?.label ?? 'Loại nguyên liệu: Tất cả';
 
   const selectedCount = useMemo(
     () => Object.values(selectedMap).reduce((sum, qty) => sum + qty, 0),
@@ -119,6 +135,54 @@ export default function RecommendationScreen() {
     fetchPage(0, false, statusFilter, categoryFilter, appliedScoreMin, appliedScoreMax, appliedSearch);
   }, [fetchPage, statusFilter, categoryFilter, appliedScoreMin, appliedScoreMax, appliedSearch]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!needsRecommendationRefresh) {
+        return undefined;
+      }
+
+      let isActive = true;
+      let intervalId: ReturnType<typeof setInterval> | undefined;
+
+      const checkEvaluationStatus = async () => {
+        try {
+          const statusRes = await recommendationService.getEvaluationStatus();
+          if (!isActive) return;
+
+          setEvaluationStatus(statusRes.status);
+
+          if (statusRes.status === 'queued' || statusRes.status === 'processing') {
+            return;
+          }
+
+          await fetchPage(0, false, statusFilter, categoryFilter, appliedScoreMin, appliedScoreMax, appliedSearch);
+          clearRecommendationRefreshNeeded();
+        } catch (error) {
+          console.error('Failed to check recommendation evaluation status:', error);
+        }
+      };
+
+      checkEvaluationStatus();
+      intervalId = setInterval(checkEvaluationStatus, 3000);
+
+      return () => {
+        isActive = false;
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
+      };
+    }, [
+      needsRecommendationRefresh,
+      clearRecommendationRefreshNeeded,
+      fetchPage,
+      statusFilter,
+      categoryFilter,
+      appliedScoreMin,
+      appliedScoreMax,
+      appliedSearch,
+    ])
+  );
+
   const handleAdd = (recipeId: string) => {
     setSelectedMap(prev => ({ ...prev, [recipeId]: (prev[recipeId] ?? 0) + 1 }));
   };
@@ -153,11 +217,13 @@ export default function RecommendationScreen() {
   const handleFilterChange = (filter: RecommendationStatusFilter) => {
     if (filter === statusFilter) return;
     setStatusFilter(filter);
+    setOpenSelector(null);
   };
 
   const handleCategoryChange = (category: string) => {
     if (category === categoryFilter) return;
     setCategoryFilter(category);
+    setOpenSelector(null);
   };
 
   const parseScoreInput = (value: string): number | undefined => {
@@ -214,6 +280,12 @@ export default function RecommendationScreen() {
           <View style={styles.metaRow}>
             <Ionicons name="star" size={14} color="#F59E0B" />
             <ThemedText style={styles.score}>{item.evaluated ? `${item.score}/100` : '--/100'}</ThemedText>
+            {item.pricePerServing != null ? (
+              <View style={styles.pricePill}>
+                <Ionicons name="cash-outline" size={12} color="#8F4D44" />
+                <ThemedText style={styles.pricePillText}>{formatCurrency(item.pricePerServing)}/phần</ThemedText>
+              </View>
+            ) : null}
             
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
               {item.dishCategories && item.dishCategories.map(cat => (
@@ -254,6 +326,12 @@ export default function RecommendationScreen() {
       <View style={styles.header}>
         <ThemedText type="title">Gợi ý món ăn</ThemedText>
         <ThemedText style={styles.subtitle}>Danh sách món phù hợp cho bạn</ThemedText>
+        {needsRecommendationRefresh && (evaluationStatus === 'queued' || evaluationStatus === 'processing') ? (
+          <View style={styles.statusNotice}>
+            <Ionicons name="sync-outline" size={14} color="#8F4D44" />
+            <ThemedText style={styles.statusNoticeText}>Đang cập nhật gợi ý theo thông tin gia đình mới...</ThemedText>
+          </View>
+        ) : null}
         <Pressable style={styles.filterToggleBtn} onPress={() => setShowFilterPanel(prev => !prev)}>
           <View style={styles.filterToggleLeft}>
             <Ionicons name="options-outline" size={16} color="#8F4D44" />
@@ -275,33 +353,69 @@ export default function RecommendationScreen() {
 
         {showFilterPanel ? (
           <View style={styles.filterPanel}>
-            <View style={styles.filterRow}>
-              {FILTER_OPTIONS.map(option => {
-                const active = option.key === statusFilter;
-                return (
-                  <Pressable
-                    key={option.key}
-                    style={[styles.filterChip, active && styles.filterChipActive]}
-                    onPress={() => handleFilterChange(option.key)}
-                  >
-                    <ThemedText style={[styles.filterChipText, active && styles.filterChipTextActive]}>{option.label}</ThemedText>
-                  </Pressable>
-                );
-              })}
+            <View style={styles.filterSection}>
+              <ThemedText style={styles.filterSectionLabel}>Trạng thái đánh giá</ThemedText>
+              <Pressable
+                style={styles.filterSelector}
+                onPress={() => setOpenSelector(prev => (prev === 'status' ? null : 'status'))}
+              >
+                <ThemedText style={styles.filterSelectorText}>{selectedStatusLabel}</ThemedText>
+                <Ionicons
+                  name={openSelector === 'status' ? 'chevron-up-outline' : 'chevron-down-outline'}
+                  size={18}
+                  color="#8F4D44"
+                />
+              </Pressable>
+              {openSelector === 'status' ? (
+                <View style={styles.filterOptionList}>
+                  {FILTER_OPTIONS.map(option => {
+                    const active = option.key === statusFilter;
+                    return (
+                      <Pressable
+                        key={option.key}
+                        style={[styles.filterOptionItem, active && styles.filterOptionItemActive]}
+                        onPress={() => handleFilterChange(option.key)}
+                      >
+                        <ThemedText style={[styles.filterOptionText, active && styles.filterOptionTextActive]}>
+                          {option.label}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
             </View>
-            <View style={styles.filterRow}>
-              {categoryOptions.map(option => {
-                const active = option.key === categoryFilter;
-                return (
-                  <Pressable
-                    key={option.key}
-                    style={[styles.filterChip, active && styles.filterChipActive]}
-                    onPress={() => handleCategoryChange(option.key)}
-                  >
-                    <ThemedText style={[styles.filterChipText, active && styles.filterChipTextActive]}>{option.label}</ThemedText>
-                  </Pressable>
-                );
-              })}
+            <View style={styles.filterSection}>
+              <ThemedText style={styles.filterSectionLabel}>Danh mục</ThemedText>
+              <Pressable
+                style={styles.filterSelector}
+                onPress={() => setOpenSelector(prev => (prev === 'category' ? null : 'category'))}
+              >
+                <ThemedText style={styles.filterSelectorText}>{selectedCategoryLabel}</ThemedText>
+                <Ionicons
+                  name={openSelector === 'category' ? 'chevron-up-outline' : 'chevron-down-outline'}
+                  size={18}
+                  color="#8F4D44"
+                />
+              </Pressable>
+              {openSelector === 'category' ? (
+                <View style={styles.filterOptionList}>
+                  {categoryOptions.map(option => {
+                    const active = option.key === categoryFilter;
+                    return (
+                      <Pressable
+                        key={option.key}
+                        style={[styles.filterOptionItem, active && styles.filterOptionItemActive]}
+                        onPress={() => handleCategoryChange(option.key)}
+                      >
+                        <ThemedText style={[styles.filterOptionText, active && styles.filterOptionTextActive]}>
+                          {option.label}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
             </View>
             <View style={styles.searchRow}>
               <Ionicons name="search" size={16} color="#8F4D44" />
@@ -407,6 +521,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     opacity: 0.7,
   },
+  statusNotice: {
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#FFF7F5',
+    borderWidth: 1,
+    borderColor: '#E8C7C2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8F4D44',
+  },
   filterToggleBtn: {
     marginTop: 12,
     height: 42,
@@ -455,6 +587,57 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F0D9D5',
     backgroundColor: '#FFFDFC',
+  },
+  filterSection: {
+    marginTop: 10,
+    gap: 8,
+  },
+  filterSectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8F4D44',
+  },
+  filterSelector: {
+    minHeight: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E3C5C0',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  filterSelectorText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#7E3F38',
+  },
+  filterOptionList: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F0D9D5',
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  filterOptionItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F7E5E1',
+  },
+  filterOptionItemActive: {
+    backgroundColor: '#FAEFEC',
+  },
+  filterOptionText: {
+    fontSize: 13,
+    color: '#8F4D44',
+  },
+  filterOptionTextActive: {
+    fontWeight: '700',
+    color: '#A75A50',
   },
   searchRow: {
     marginTop: 10,
@@ -627,6 +810,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+  },
+  pricePill: {
+    marginLeft: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: '#FFF4E8',
+    borderWidth: 1,
+    borderColor: '#F4D2A7',
+  },
+  pricePillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8F4D44',
   },
   score: {
     fontSize: 12,

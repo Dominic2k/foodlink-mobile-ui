@@ -13,6 +13,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { familyService } from '@/features/family/services/familyService';
+import { useRecommendationRefresh } from '@/features/recommendation/context/RecommendationRefreshContext';
 import {
   Relationship, Gender, ActivityLevel, Severity,
   HealthCondition, Ingredient, AllergyRequest, FamilyMemberRequest,
@@ -60,6 +61,7 @@ export default function EditFamilyMemberScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const isEdit = !!id;
+  const { markRecommendationRefreshNeeded } = useRecommendationRefresh();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -132,6 +134,7 @@ export default function EditFamilyMemberScreen() {
         await familyService.addFamilyMember(form);
         Alert.alert('Thành công', 'Đã thêm thành viên mới');
       }
+      markRecommendationRefreshNeeded();
       router.navigate('/family-members');
     } catch (error: any) {
       Alert.alert('Lỗi', error.message || 'Không thể lưu thông tin');
@@ -152,6 +155,7 @@ export default function EditFamilyMemberScreen() {
           onPress: async () => {
             try {
               await familyService.deleteFamilyMember(id!);
+              markRecommendationRefreshNeeded();
               router.navigate('/family-members');
             } catch (error: any) {
               Alert.alert('Lỗi', error.message || 'Không thể xóa thành viên');
