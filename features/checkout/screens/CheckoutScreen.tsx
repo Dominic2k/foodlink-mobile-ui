@@ -11,7 +11,7 @@ import { orderService } from '@/features/checkout/services/orderService';
 import { OrderRequest } from '@/features/checkout/types';
 
 export default function CheckoutScreen() {
-  const { recipeId, selections } = useLocalSearchParams<{ recipeId?: string, selections?: string }>();
+  const { recipeId, selections, servings } = useLocalSearchParams<{ recipeId?: string, selections?: string, servings?: string }>();
   const router = useRouter();
   
   const [item, setItem] = useState<RecommendationItem | null>(null);
@@ -36,7 +36,17 @@ export default function CheckoutScreen() {
           }
         } else if (recipeId) {
           const data = await recommendationService.getRecommendationDetail(recipeId);
-          setItem(data);
+          const desiredServings = Math.max(1, Number(servings || '1'));
+          const baseServings = data.baseServings && data.baseServings > 0 ? data.baseServings : 1;
+          const factor = desiredServings / baseServings;
+          setItem({
+            ...data,
+            ingredients: data.ingredients?.map(ing => ({
+              ...ing,
+              quantity: ing.quantity != null ? ing.quantity * factor : ing.quantity,
+              totalPrice: ing.totalPrice != null ? ing.totalPrice * factor : ing.totalPrice,
+            })),
+          });
         }
       } catch (error) {
         console.error('Failed to load data for checkout:', error);
@@ -46,7 +56,7 @@ export default function CheckoutScreen() {
     };
 
     loadData();
-  }, [recipeId, selections]);
+  }, [recipeId, selections, servings]);
 
   const handlePayment = async () => {
     if (!item?.ingredients || item.ingredients.length === 0) return;

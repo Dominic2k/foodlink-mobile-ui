@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/shared/components/common/ThemedText';
 import { ThemedView } from '@/shared/components/common/ThemedView';
+import { useRecommendationRefresh } from '@/features/recommendation/context/RecommendationRefreshContext';
 import { recommendationService } from '@/features/recommendation/services/recommendationService';
-import { RecommendationItem } from '@/features/recommendation/types';
+import { RecommendationEvaluationStatus, RecommendationItem } from '@/features/recommendation/types';
 
 export default function RecommendationDetailScreen() {
   const { recipeId } = useLocalSearchParams<{ recipeId?: string }>();
@@ -14,27 +15,75 @@ export default function RecommendationDetailScreen() {
   const [item, setItem] = useState<RecommendationItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedInstructions, setExpandedInstructions] = useState(false);
+  const [servings, setServings] = useState(1);
+  const [evaluationStatus, setEvaluationStatus] = useState<RecommendationEvaluationStatus>('idle');
+  const { needsRecommendationRefresh, clearRecommendationRefreshNeeded } = useRecommendationRefresh();
+
+  const loadDetail = useCallback(async () => {
+    if (!recipeId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const data = await recommendationService.getRecommendationDetail(recipeId);
+      setItem(data);
+    } catch (error) {
+      console.error('Failed to load recommendation detail:', error);
+      setItem(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [recipeId]);
 
   useEffect(() => {
-    const loadDetail = async () => {
-      if (!recipeId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const data = await recommendationService.getRecommendationDetail(recipeId);
-        setItem(data);
-      } catch (error) {
-        console.error('Failed to load recommendation detail:', error);
-        setItem(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadDetail();
-  }, [recipeId]);
+  }, [loadDetail]);
+
+  useEffect(() => {
+    const base = item?.baseServings && item.baseServings > 0 ? item.baseServings : 1;
+    setServings(base);
+  }, [item?.recipeId, item?.baseServings]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!needsRecommendationRefresh) {
+        return undefined;
+      }
+
+      let isActive = true;
+      let intervalId: ReturnType<typeof setInterval> | undefined;
+
+      const checkEvaluationStatus = async () => {
+        try {
+          const statusRes = await recommendationService.getEvaluationStatus();
+          if (!isActive) return;
+
+          setEvaluationStatus(statusRes.status);
+
+          if (statusRes.status === 'queued' || statusRes.status === 'processing') {
+            return;
+          }
+
+          setLoading(true);
+          await loadDetail();
+          clearRecommendationRefreshNeeded();
+        } catch (error) {
+          console.error('Failed to check recommendation detail evaluation status:', error);
+        }
+      };
+
+      checkEvaluationStatus();
+      intervalId = setInterval(checkEvaluationStatus, 3000);
+
+      return () => {
+        isActive = false;
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
+      };
+    }, [needsRecommendationRefresh, clearRecommendationRefreshNeeded, loadDetail])
+  );
 
   if (loading) {
     return (
@@ -59,6 +108,14 @@ export default function RecommendationDetailScreen() {
   const ingredients = item.ingredients ?? [];
 
   const fmt = (value?: number | null) => (typeof value === 'number' ? value.toFixed(2) : '--');
+  const formatCurrency = (value?: number | null) => {
+    if (typeof value !== 'number') return '--';
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
   
   const formatCategoryLabel = (value: string) => {
     if (!value) return 'Other';
@@ -67,6 +124,11 @@ export default function RecommendationDetailScreen() {
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   };
+  const baseServings = item.baseServings && item.baseServings > 0 ? item.baseServings : 1;
+  const servingFactor = servings / baseServings;
+  const selectedTotalPrice = item.ingredients && item.ingredients.length > 0
+    ? item.ingredients.reduce((sum, ing) => sum + ((ing.totalPrice ?? 0) * servingFactor), 0)
+    : (item.pricePerServing != null ? item.pricePerServing * servings : null);
 
   return (
     <View style={styles.container}>
@@ -85,6 +147,13 @@ export default function RecommendationDetailScreen() {
         <View style={[styles.statusBadge, statusStyle]}>
           <ThemedText style={[styles.statusText, statusTextStyle]}>{statusLabel}</ThemedText>
         </View>
+
+        {needsRecommendationRefresh && (evaluationStatus === 'queued' || evaluationStatus === 'processing') ? (
+          <View style={styles.refreshNotice}>
+            <Ionicons name="sync-outline" size={14} color="#8F4D44" />
+            <ThemedText style={styles.refreshNoticeText}>Đang chờ hệ thống đánh giá lại món ăn...</ThemedText>
+          </View>
+        ) : null}
 
         <View style={styles.metaRow}>
           <Ionicons name="star" size={16} color="#F59E0B" />
@@ -120,6 +189,34 @@ export default function RecommendationDetailScreen() {
           <View style={styles.recipeInfoChip}>
             <Ionicons name="people-outline" size={14} color="#8F4D44" />
             <ThemedText style={styles.recipeInfoText}>Khẩu phần {item.baseServings ?? '--'}</ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.priceCard}>
+          <View style={styles.priceRow}>
+            <ThemedText style={styles.priceLabel}>Giá một khẩu phần</ThemedText>
+            <ThemedText style={styles.priceValue}>{formatCurrency(item.pricePerServing)}</ThemedText>
+          </View>
+          <View style={styles.priceRow}>
+            <ThemedText style={styles.priceLabel}>Khẩu phần muốn mua</ThemedText>
+            <View style={styles.servingStepper}>
+              <Pressable
+                style={[styles.stepperBtn, servings <= 1 && styles.stepperBtnDisabled]}
+                onPress={() => setServings(prev => Math.max(1, prev - 1))}
+                disabled={servings <= 1}
+              >
+                <Ionicons name="remove" size={16} color="#8F4D44" />
+              </Pressable>
+              <ThemedText style={styles.servingValue}>{servings}</ThemedText>
+              <Pressable style={styles.stepperBtn} onPress={() => setServings(prev => prev + 1)}>
+                <Ionicons name="add" size={16} color="#8F4D44" />
+              </Pressable>
+            </View>
+          </View>
+          <ThemedText style={styles.servingHint}>Công thức gốc hiện tại dành cho {baseServings} khẩu phần.</ThemedText>
+          <View style={[styles.priceRow, styles.priceRowTotal]}>
+            <ThemedText style={styles.totalPriceLabel}>Tổng giá ước tính</ThemedText>
+            <ThemedText style={styles.totalPriceValue}>{formatCurrency(selectedTotalPrice)}</ThemedText>
           </View>
         </View>
 
@@ -206,9 +303,12 @@ export default function RecommendationDetailScreen() {
                     {ingredient.ingredientName} {ingredient.optional ? '(tùy chọn)' : ''}
                   </ThemedText>
                   <ThemedText style={styles.ingredientQty}>
-                    {ingredient.quantity ?? '--'} {ingredient.unit ?? ''}
+                    {ingredient.quantity != null ? fmt(ingredient.quantity * servingFactor) : '--'} {ingredient.unit ?? ''}
                   </ThemedText>
                 </View>
+                <ThemedText style={styles.ingredientPriceText}>
+                  {formatCurrency(ingredient.totalPrice != null ? ingredient.totalPrice * servingFactor : null)}
+                </ThemedText>
                 <ThemedText style={styles.ingredientNutrition}>
                   Cal {fmt(ingredient.calories)} | P {fmt(ingredient.protein)} | C {fmt(ingredient.carb)} | F {fmt(ingredient.fat)}
                 </ThemedText>
@@ -225,7 +325,7 @@ export default function RecommendationDetailScreen() {
             if (item.recipeId) {
               router.push({
                 pathname: '/checkout',
-                params: { recipeId: item.recipeId }
+                params: { recipeId: item.recipeId, servings: String(servings) }
               });
             }
           }}
@@ -309,6 +409,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  refreshNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#FFF7F5',
+    borderWidth: 1,
+    borderColor: '#E8C7C2',
+  },
+  refreshNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8F4D44',
+  },
   statusPendingText: {
     color: '#4B5563',
   },
@@ -370,6 +487,74 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#8F4D44',
+  },
+  priceCard: {
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#F0D9D5',
+    borderRadius: 14,
+    backgroundColor: '#FFF8F4',
+    padding: 12,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  priceRowTotal: {
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#E8C7C2',
+  },
+  priceLabel: {
+    fontSize: 13,
+    color: '#8F4D44',
+    fontWeight: '600',
+  },
+  priceValue: {
+    fontSize: 18,
+    color: '#7E3F38',
+    fontWeight: '800',
+  },
+  servingStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  stepperBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#D9B4AE',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperBtnDisabled: {
+    opacity: 0.4,
+  },
+  servingValue: {
+    minWidth: 24,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  servingHint: {
+    fontSize: 12,
+    color: '#7E3F38',
+  },
+  totalPriceLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#7E3F38',
+  },
+  totalPriceValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#A75A50',
   },
   expandBtn: {
     flexDirection: 'row',
@@ -459,6 +644,11 @@ const styles = StyleSheet.create({
   ingredientNutrition: {
     fontSize: 12,
     color: '#475569',
+  },
+  ingredientPriceText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#A75A50',
   },
   bottomFixedBar: {
     padding: 16,

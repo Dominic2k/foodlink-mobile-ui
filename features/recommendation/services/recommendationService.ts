@@ -1,12 +1,18 @@
 import { api } from '@/core/api/client';
 import {
   RecommendationDetailApiResponse,
+  RecommendationEvaluationStatusApiResponse,
   RecommendationFilterOptionsApiResponse,
   RecommendationPageApiResponse,
   RecommendationStatusFilter,
 } from '@/features/recommendation/types';
 
 export const recommendationService = {
+  async getEvaluationStatus() {
+    const res = await api.get<RecommendationEvaluationStatusApiResponse>('/recommendations/status');
+    return res.data;
+  },
+
   async getFilterOptions() {
     const res = await api.get<RecommendationFilterOptionsApiResponse>('/recommendations/filter-options');
     return res.data;

@@ -52,7 +52,7 @@ export default function TabLayout() {
           headerShown: true,
           title: 'Chi tiết đề xuất',
           headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 15 }}>
+            <TouchableOpacity onPress={() => router.navigate('/recommendation')} style={{ marginLeft: 15 }}>
               <Ionicons name="arrow-back" size={24} color="#333" />
             </TouchableOpacity>
           ),

@@ -1,6 +1,7 @@
 import { BaseResponse } from '@/core/api/types';
 
 export type RecommendationStatusFilter = 'all' | 'suitable' | 'not_suitable' | 'unevaluated';
+export type RecommendationEvaluationStatus = 'idle' | 'queued' | 'processing' | 'completed' | 'failed';
 
 export interface RecommendationItem {
   recipeId: string;
@@ -11,6 +12,8 @@ export interface RecommendationItem {
   prepTimeMin?: number | null;
   cookTimeMin?: number | null;
   baseServings?: number | null;
+  totalIngredientPrice?: number | null;
+  pricePerServing?: number | null;
   category?: string | null;
   dishCategories?: string[];
   evaluated: boolean;
@@ -60,6 +63,15 @@ export interface RecommendationFilterOptionsData {
   dishCategories: string[];
 }
 
+export interface RecommendationEvaluationStatusData {
+  status: RecommendationEvaluationStatus;
+  lastTriggeredAt?: string | null;
+  lastCompletedAt?: string | null;
+  updatedAt?: string | null;
+  errorMessage?: string | null;
+}
+
 export type RecommendationPageApiResponse = BaseResponse<RecommendationPageData>;
 export type RecommendationFilterOptionsApiResponse = BaseResponse<RecommendationFilterOptionsData>;
 export type RecommendationDetailApiResponse = BaseResponse<RecommendationItem>;
+export type RecommendationEvaluationStatusApiResponse = BaseResponse<RecommendationEvaluationStatusData>;
