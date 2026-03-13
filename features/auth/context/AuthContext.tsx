@@ -2,8 +2,8 @@
  * Auth Context for global authentication state management
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Alert } from 'react-native';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { Alert, AppState, AppStateStatus } from 'react-native';
 import { router } from 'expo-router';
 import { User, AuthState } from '@/features/auth/types';
 import { UserProfile } from '@/features/profile/types';
@@ -30,10 +30,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: false,
   });
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const sessionStartRef = useRef<number>(Date.now());
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   useEffect(() => {
     loadStoredAuth();
   }, []);
+
+  // Session duration tracking via AppState
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (
+        appStateRef.current.match(/active/) &&
+        nextAppState.match(/inactive|background/) &&
+        state.isAuthenticated
+      ) {
+        // App going to background — report session duration
+        const durationSeconds = Math.round((Date.now() - sessionStartRef.current) / 1000);
+        if (durationSeconds >= 5) {
+          api.post('/api/sessions', { durationSeconds }).catch(() => {});
+        }
+      }
+
+      if (
+        appStateRef.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        // App coming to foreground — reset session start
+        sessionStartRef.current = Date.now();
+      }
+
+      appStateRef.current = nextAppState;
+    });
+
+    return () => subscription.remove();
+  }, [state.isAuthenticated]);
 
   const loadStoredAuth = async () => {
     try {
