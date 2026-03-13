@@ -127,6 +127,16 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={18} color="#999" />
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/change-password' as any)}>
+            <View style={styles.menuLeft}>
+              <View style={[styles.menuIconBg, { backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}>
+                <Ionicons name="lock-closed-outline" size={20} color="#EF4444" />
+              </View>
+              <ThemedText style={styles.menuText}>Đổi mật khẩu</ThemedText>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#999" />
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuLeft}>
               <View style={[styles.menuIconBg, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
