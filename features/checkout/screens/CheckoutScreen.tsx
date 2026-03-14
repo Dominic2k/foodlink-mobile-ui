@@ -8,13 +8,14 @@ import { ThemedView } from '@/shared/components/common/ThemedView';
 import { recommendationService } from '@/features/recommendation/services/recommendationService';
 import { RecommendationItem } from '@/features/recommendation/types';
 import { orderService } from '@/features/checkout/services/orderService';
-import { OrderRequest } from '@/features/checkout/types';
+import { OrderItemRequest, OrderRequest } from '@/features/checkout/types';
 
 export default function CheckoutScreen() {
   const { recipeId, selections, servings } = useLocalSearchParams<{ recipeId?: string, selections?: string, servings?: string }>();
   const router = useRouter();
   
   const [item, setItem] = useState<RecommendationItem | null>(null);
+  const [editableIngredients, setEditableIngredients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -33,20 +34,23 @@ export default function CheckoutScreen() {
               suitable: true,
               ingredients: aggregatedIngredients
             });
+            setEditableIngredients(aggregatedIngredients);
           }
         } else if (recipeId) {
           const data = await recommendationService.getRecommendationDetail(recipeId);
           const desiredServings = Math.max(1, Number(servings || '1'));
           const baseServings = data.baseServings && data.baseServings > 0 ? data.baseServings : 1;
           const factor = desiredServings / baseServings;
+          const scaledIngredients = data.ingredients?.map(ing => ({
+            ...ing,
+            quantity: ing.quantity != null ? ing.quantity * factor : ing.quantity,
+            totalPrice: ing.totalPrice != null ? ing.totalPrice * factor : ing.totalPrice,
+          })) || [];
           setItem({
             ...data,
-            ingredients: data.ingredients?.map(ing => ({
-              ...ing,
-              quantity: ing.quantity != null ? ing.quantity * factor : ing.quantity,
-              totalPrice: ing.totalPrice != null ? ing.totalPrice * factor : ing.totalPrice,
-            })),
+            ingredients: scaledIngredients,
           });
+          setEditableIngredients(scaledIngredients);
         }
       } catch (error) {
         console.error('Failed to load data for checkout:', error);
@@ -58,27 +62,65 @@ export default function CheckoutScreen() {
     loadData();
   }, [recipeId, selections, servings]);
 
+  const updateQuantity = (id: string, delta: number) => {
+    setEditableIngredients(prev => prev.map(ing => {
+      if (ing.ingredientId === id || (id === 'none' && !ing.ingredientId)) {
+        const currentQty = ing.quantity || 0;
+        const newQty = Math.max(0.1, currentQty + delta);
+        const unitPrice = ing.price || (ing.totalPrice / (currentQty || 1));
+        return { 
+          ...ing, 
+          quantity: Number(newQty.toFixed(2)), 
+          totalPrice: Number((newQty * unitPrice).toFixed(0)) 
+        };
+      }
+      return ing;
+    }));
+  };
+
+  const removeIngredient = (id: string) => {
+    setEditableIngredients(prev => prev.filter(ing => ing.ingredientId !== id));
+  };
+
   const handlePayment = async () => {
-    if (!item?.ingredients || item.ingredients.length === 0) return;
+    if (editableIngredients.length === 0) return;
 
     try {
       setSubmitting(true);
-      const grandTotal = item.ingredients.reduce((sum, ing) => sum + (ing.totalPrice ?? 0), 0);
+      const grandTotal = editableIngredients.reduce((sum, ing) => sum + (ing.totalPrice ?? 0), 0);
+
+      let orderItems: OrderItemRequest[] = [];
+      if (selections) {
+        const parsedSelections = JSON.parse(selections);
+        orderItems = parsedSelections.map((sel: any) => ({
+          recipeId: sel.recipeId,
+          servings: sel.quantity || 1
+        }));
+      } else if (recipeId) {
+        orderItems = [{
+          recipeId: recipeId,
+          servings: Math.max(1, Number(servings || '1'))
+        }];
+      }
+
+      const customIngredients = editableIngredients.map(ing => ({
+        ingredientId: ing.ingredientId,
+        quantity: ing.quantity,
+        unit: ing.unit
+      }));
 
       const request: OrderRequest = {
         deliveryAddressText: "Địa chỉ mặc định", // Mocked for now
         deliveryPhone: "0123456789", // Mocked for now
-        totalAmount: grandTotal,
         paymentMethod: "COD",
-        note: `Đơn hàng nguyên liệu món: ${item.recipeName}`,
-        items: item.ingredients.map(ing => ({
-          ingredientId: ing.ingredientId || '',
-          quantity: ing.quantity || 0,
-          unit: ing.unit || '',
-          price: ing.price ?? undefined,
-          lineTotal: ing.totalPrice ?? undefined
+        note: `Đơn hàng nguyên liệu: ${item?.recipeName || 'Nhiều món'}`,
+        items: orderItems.map((oi, idx) => ({
+          ...oi,
+          customIngredients: (orderItems.length === 1 || (recipeId && oi.recipeId === recipeId)) ? customIngredients : undefined
         }))
       };
+
+      console.log('[DEBUG] Creating order request:', JSON.stringify(request, null, 2));
 
       await orderService.createOrder(request);
 
@@ -120,8 +162,7 @@ export default function CheckoutScreen() {
     );
   }
 
-  const ingredients = item.ingredients;
-  const grandTotal = ingredients.reduce((sum, ing) => sum + (ing.totalPrice ?? 0), 0);
+  const grandTotal = editableIngredients.reduce((sum, ing) => sum + (ing.totalPrice ?? 0), 0);
   const fmtCurrency = (val: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
   return (
@@ -139,13 +180,27 @@ export default function CheckoutScreen() {
           <ThemedText style={styles.recipeName}>Món: {item.recipeName}</ThemedText>
           <View style={styles.divider} />
           
-          {ingredients.map((ing, idx) => (
+          {editableIngredients.map((ing, idx) => (
             <View key={`checkout-ing-${ing.ingredientId || idx}`} style={styles.ingredientRow}>
               <View style={styles.ingredientInfo}>
                 <ThemedText style={styles.ingredientName}>{ing.ingredientName}</ThemedText>
-                <ThemedText style={styles.ingredientQty}>
-                  Số lượng: {ing.quantity ?? '--'} {ing.unit ?? ''}
-                </ThemedText>
+                <View style={styles.quantityContainer}>
+                  <Pressable 
+                    onPress={() => updateQuantity(ing.ingredientId || 'none', -(ing.quantity > 100 ? 50 : 1))}
+                    style={styles.qtyBtn}
+                  >
+                    <Ionicons name="remove-circle-outline" size={22} color="#C1766B" />
+                  </Pressable>
+                  <ThemedText style={styles.ingredientQty}>
+                    {ing.quantity ?? '--'} {ing.unit ?? ''}
+                  </ThemedText>
+                  <Pressable 
+                    onPress={() => updateQuantity(ing.ingredientId || 'none', (ing.quantity >= 100 ? 50 : 1))}
+                    style={styles.qtyBtn}
+                  >
+                    <Ionicons name="add-circle-outline" size={22} color="#C1766B" />
+                  </Pressable>
+                </View>
                 {ing.price != null && (
                   <ThemedText style={styles.ingredientPricePerUnit}>
                     Đơn giá: {fmtCurrency(ing.price)} / {ing.unit ?? 'đv'}
@@ -156,6 +211,9 @@ export default function CheckoutScreen() {
                 <ThemedText style={styles.ingredientTotalPrice}>
                   {ing.totalPrice != null ? fmtCurrency(ing.totalPrice) : '--'}
                 </ThemedText>
+                <Pressable onPress={() => removeIngredient(ing.ingredientId)} style={styles.removeBtn}>
+                  <Ionicons name="trash-outline" size={18} color="#9CA3AF" />
+                </Pressable>
               </View>
             </View>
           ))}
@@ -274,8 +332,24 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   ingredientQty: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4B5563',
+    minWidth: 60,
+    textAlign: 'center',
+  },
+  quantityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  qtyBtn: {
+    padding: 2,
+  },
+  removeBtn: {
+    marginTop: 8,
+    padding: 4,
   },
   ingredientPricePerUnit: {
     fontSize: 12,

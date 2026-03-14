@@ -1,9 +1,13 @@
 import { api } from '@/core/api/client';
-import { OrderRequest, OrderApiResponse } from '@/features/checkout/types';
+import { OrderRequest, OrderApiResponse, OrderListApiResponse } from '@/features/checkout/types';
 
 export const orderService = {
   createOrder: async (request: OrderRequest): Promise<OrderApiResponse['data']> => {
     const response = await api.post<OrderApiResponse>('/api/v1/orders', request);
+    return response.data;
+  },
+  getMyOrders: async (page = 0, size = 20): Promise<OrderListApiResponse['data']> => {
+    const response = await api.get<OrderListApiResponse>(`/api/v1/orders/my-orders?page=${page}&size=${size}`);
     return response.data;
   },
 };

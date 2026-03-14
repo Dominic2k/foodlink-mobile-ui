@@ -137,6 +137,16 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={18} color="#999" />
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/order-history' as any)}>
+            <View style={styles.menuLeft}>
+              <View style={[styles.menuIconBg, { backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}>
+                <Ionicons name="receipt-outline" size={20} color="#F59E0B" />
+              </View>
+              <ThemedText style={styles.menuText}>Lịch sử đơn hàng</ThemedText>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#999" />
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuLeft}>
               <View style={[styles.menuIconBg, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
