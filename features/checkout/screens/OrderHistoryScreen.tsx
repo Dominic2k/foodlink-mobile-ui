@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -78,7 +78,11 @@ export default function OrderHistoryScreen() {
   };
 
   const renderOrderItem = ({ item }: { item: OrderResponse }) => (
-    <View style={styles.orderCard}>
+    <TouchableOpacity
+      activeOpacity={0.9}
+      style={styles.orderCard}
+      onPress={() => router.push({ pathname: '/order-detail', params: { orderId: item.id } })}
+    >
       <View style={styles.orderHeader}>
         <View>
           <ThemedText style={styles.orderId}>Đơn hàng #{item.id.slice(0, 8).toUpperCase()}</ThemedText>
@@ -106,7 +110,7 @@ export default function OrderHistoryScreen() {
           <ThemedText style={styles.totalValue}>{formatCurrency(item.totalAmount)}</ThemedText>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   if (loading && !refreshing) {
