@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -24,26 +24,52 @@ export default function OrderDetailScreen() {
 
   const [order, setOrder] = useState<OrderResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [canceling, setCanceling] = useState(false);
+
+  const loadOrderDetail = useCallback(async () => {
+    if (!orderId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const data = await orderService.getOrderById(orderId);
+      setOrder(data);
+    } catch (error) {
+      console.error('Failed to load order detail:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [orderId]);
 
   useEffect(() => {
-    const loadOrderDetail = async () => {
-      if (!orderId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const data = await orderService.getOrderById(orderId);
-        setOrder(data);
-      } catch (error) {
-        console.error('Failed to load order detail:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadOrderDetail();
-  }, [orderId]);
+  }, [loadOrderDetail]);
+
+  const handleCancelOrder = () => {
+    if (!orderId) return;
+
+    Alert.alert('Xac nhan huy don', 'Ban co chac chan muon huy don hang nay khong?', [
+      { text: 'Khong', style: 'cancel' },
+      {
+        text: 'Huy don',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setCanceling(true);
+            await orderService.cancelMyOrder(orderId);
+            await loadOrderDetail();
+            Alert.alert('Thanh cong', 'Don hang da duoc huy.');
+          } catch (error: any) {
+            console.error('Failed to cancel order:', error);
+            Alert.alert('Loi', error?.message || 'Khong the huy don hang luc nay.');
+          } finally {
+            setCanceling(false);
+          }
+        },
+      },
+    ]);
+  };
 
   const aggregatedIngredients = useMemo<AggregatedIngredient[]>(() => {
     if (!order?.items?.length) return [];
@@ -162,6 +188,11 @@ export default function OrderDetailScreen() {
           <ThemedText style={styles.infoLine}>Thanh toan: {order.paymentMethod || '--'}</ThemedText>
           <ThemedText style={styles.infoLine}>Ghi chu: {order.note || '--'}</ThemedText>
           <ThemedText style={styles.totalAmount}>Tong tien: {formatCurrency(order.totalAmount)}</ThemedText>
+          {order.status?.toLowerCase() === 'pending' ? (
+            <Pressable style={[styles.cancelBtn, canceling && styles.cancelBtnDisabled]} disabled={canceling} onPress={handleCancelOrder}>
+              <ThemedText style={styles.cancelBtnText}>{canceling ? 'Dang huy...' : 'Huy don'}</ThemedText>
+            </Pressable>
+          ) : null}
         </View>
 
         <View style={styles.card}>
@@ -298,6 +329,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: BRAND,
+  },
+  cancelBtn: {
+    marginTop: 10,
+    alignSelf: 'flex-end',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FEF2F2',
+  },
+  cancelBtnDisabled: {
+    opacity: 0.6,
+  },
+  cancelBtnText: {
+    color: '#B91C1C',
+    fontSize: 12,
+    fontWeight: '700',
   },
   sectionTitle: {
     fontSize: 16,

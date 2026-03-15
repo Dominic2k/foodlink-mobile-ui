@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
@@ -14,6 +14,7 @@ export default function OrderHistoryScreen() {
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [cancelingOrderId, setCancelingOrderId] = useState<string | null>(null);
   const router = useRouter();
 
   const loadOrders = async () => {
@@ -35,6 +36,28 @@ export default function OrderHistoryScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     loadOrders();
+  };
+
+  const handleCancelOrder = (orderId: string) => {
+    Alert.alert('Xac nhan huy don', 'Ban co chac chan muon huy don hang nay khong?', [
+      { text: 'Khong', style: 'cancel' },
+      {
+        text: 'Huy don',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setCancelingOrderId(orderId);
+            await orderService.cancelMyOrder(orderId);
+            await loadOrders();
+          } catch (error: any) {
+            console.error('Failed to cancel order:', error);
+            Alert.alert('Loi', error?.message || 'Khong the huy don hang luc nay.');
+          } finally {
+            setCancelingOrderId(null);
+          }
+        },
+      },
+    ]);
   };
 
   const formatDate = (dateString: string) => {
@@ -59,21 +82,31 @@ export default function OrderHistoryScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending': return '#F59E0B';
-      case 'processing': return '#3B82F6';
-      case 'completed': return '#10B981';
-      case 'canceled': return '#EF4444';
-      default: return '#6B7280';
+      case 'pending':
+        return '#F59E0B';
+      case 'processing':
+        return '#3B82F6';
+      case 'completed':
+        return '#10B981';
+      case 'canceled':
+        return '#EF4444';
+      default:
+        return '#6B7280';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending': return 'Đang chờ';
-      case 'processing': return 'Đang xử lý';
-      case 'completed': return 'Hoàn thành';
-      case 'canceled': return 'Đã hủy';
-      default: return status;
+      case 'pending':
+        return 'Dang cho';
+      case 'processing':
+        return 'Dang xu ly';
+      case 'completed':
+        return 'Hoan thanh';
+      case 'canceled':
+        return 'Da huy';
+      default:
+        return status;
     }
   };
 
@@ -85,7 +118,7 @@ export default function OrderHistoryScreen() {
     >
       <View style={styles.orderHeader}>
         <View>
-          <ThemedText style={styles.orderId}>Đơn hàng #{item.id.slice(0, 8).toUpperCase()}</ThemedText>
+          <ThemedText style={styles.orderId}>Don hang #{item.id.slice(0, 8).toUpperCase()}</ThemedText>
           <ThemedText style={styles.orderDate}>{formatDate(item.createdAt)}</ThemedText>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
@@ -101,15 +134,32 @@ export default function OrderHistoryScreen() {
         <View style={styles.itemsList}>
           {item.items.map((orderItem, idx) => (
             <ThemedText key={idx} style={styles.itemText} numberOfLines={1}>
-              • {orderItem.recipeName} x{orderItem.servings}
+              - {orderItem.recipeName} x{orderItem.servings}
             </ThemedText>
           ))}
         </View>
         <View style={styles.paymentInfo}>
-          <ThemedText style={styles.totalLabel}>Tổng cộng</ThemedText>
+          <ThemedText style={styles.totalLabel}>Tong cong</ThemedText>
           <ThemedText style={styles.totalValue}>{formatCurrency(item.totalAmount)}</ThemedText>
         </View>
       </View>
+
+      {item.status?.toLowerCase() === 'pending' ? (
+        <View style={styles.cardFooter}>
+          <Pressable
+            style={[styles.cancelBtn, cancelingOrderId === item.id && styles.cancelBtnDisabled]}
+            disabled={cancelingOrderId === item.id}
+            onPress={(event) => {
+              event.stopPropagation();
+              handleCancelOrder(item.id);
+            }}
+          >
+            <ThemedText style={styles.cancelBtnText}>
+              {cancelingOrderId === item.id ? 'Dang huy...' : 'Huy don'}
+            </ThemedText>
+          </Pressable>
+        </View>
+      ) : null}
     </TouchableOpacity>
   );
 
@@ -127,7 +177,7 @@ export default function OrderHistoryScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <ThemedText style={styles.title}>Lịch sử đơn hàng</ThemedText>
+        <ThemedText style={styles.title}>Lich su don hang</ThemedText>
       </View>
 
       <FlatList
@@ -135,13 +185,11 @@ export default function OrderHistoryScreen() {
         renderItem={renderOrderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BRAND} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BRAND} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="cart-outline" size={64} color="#E5E7EB" />
-            <ThemedText style={styles.emptyText}>Bạn chưa có đơn hàng nào.</ThemedText>
+            <ThemedText style={styles.emptyText}>Ban chua co don hang nao.</ThemedText>
           </View>
         }
       />
@@ -251,6 +299,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: BRAND,
+  },
+  cardFooter: {
+    marginTop: 12,
+    alignItems: 'flex-end',
+  },
+  cancelBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FEF2F2',
+  },
+  cancelBtnDisabled: {
+    opacity: 0.6,
+  },
+  cancelBtnText: {
+    color: '#B91C1C',
+    fontSize: 12,
+    fontWeight: '700',
   },
   emptyContainer: {
     alignItems: 'center',
