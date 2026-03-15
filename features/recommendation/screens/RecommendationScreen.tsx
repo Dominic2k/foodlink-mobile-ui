@@ -249,7 +249,10 @@ export default function RecommendationScreen() {
   };
 
   const handleOpenDetail = (recipeId: string) => {
-    router.push({ pathname: '/recommendation-detail', params: { recipeId } });
+    router.push({
+      pathname: '/recommendation-detail',
+      params: { recipeId, returnTo: 'recommendation' },
+    });
   };
 
   const renderItem = ({ item }: { item: RecommendationItem }) => {
