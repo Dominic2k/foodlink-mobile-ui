@@ -39,10 +39,10 @@ export default function OrderHistoryScreen() {
   };
 
   const handleCancelOrder = (orderId: string) => {
-    Alert.alert('Xac nhan huy don', 'Ban co chac chan muon huy don hang nay khong?', [
-      { text: 'Khong', style: 'cancel' },
+    Alert.alert('Xác nhận hủy đơn', 'Bạn có chắc chắn muốn hủy đơn hàng này không?', [
+      { text: 'Không', style: 'cancel' },
       {
-        text: 'Huy don',
+        text: 'Hủy đơn',
         style: 'destructive',
         onPress: async () => {
           try {
@@ -51,7 +51,7 @@ export default function OrderHistoryScreen() {
             await loadOrders();
           } catch (error: any) {
             console.error('Failed to cancel order:', error);
-            Alert.alert('Loi', error?.message || 'Khong the huy don hang luc nay.');
+            Alert.alert('Lỗi', error?.message || 'Không thể hủy đơn hàng lúc này.');
           } finally {
             setCancelingOrderId(null);
           }
@@ -98,13 +98,13 @@ export default function OrderHistoryScreen() {
   const getStatusText = (status: string) => {
     switch (status.toLowerCase()) {
       case 'pending':
-        return 'Dang cho';
+        return 'Đang chờ';
       case 'processing':
-        return 'Dang xu ly';
+        return 'Đang xử lý';
       case 'completed':
-        return 'Hoan thanh';
+        return 'Hoàn thành';
       case 'canceled':
-        return 'Da huy';
+        return 'Đã hủy';
       default:
         return status;
     }
@@ -118,7 +118,7 @@ export default function OrderHistoryScreen() {
     >
       <View style={styles.orderHeader}>
         <View>
-          <ThemedText style={styles.orderId}>Don hang #{item.id.slice(0, 8).toUpperCase()}</ThemedText>
+          <ThemedText style={styles.orderId}>Đơn hàng #{item.id.slice(0, 8).toUpperCase()}</ThemedText>
           <ThemedText style={styles.orderDate}>{formatDate(item.createdAt)}</ThemedText>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
@@ -139,7 +139,7 @@ export default function OrderHistoryScreen() {
           ))}
         </View>
         <View style={styles.paymentInfo}>
-          <ThemedText style={styles.totalLabel}>Tong cong</ThemedText>
+          <ThemedText style={styles.totalLabel}>Tổng cộng</ThemedText>
           <ThemedText style={styles.totalValue}>{formatCurrency(item.totalAmount)}</ThemedText>
         </View>
       </View>
@@ -155,7 +155,7 @@ export default function OrderHistoryScreen() {
             }}
           >
             <ThemedText style={styles.cancelBtnText}>
-              {cancelingOrderId === item.id ? 'Dang huy...' : 'Huy don'}
+              {cancelingOrderId === item.id ? 'Đang hủy...' : 'Hủy đơn'}
             </ThemedText>
           </Pressable>
         </View>
@@ -177,7 +177,7 @@ export default function OrderHistoryScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <ThemedText style={styles.title}>Lich su don hang</ThemedText>
+        <ThemedText style={styles.title}>Lịch sử đơn hàng</ThemedText>
       </View>
 
       <FlatList
@@ -189,7 +189,7 @@ export default function OrderHistoryScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="cart-outline" size={64} color="#E5E7EB" />
-            <ThemedText style={styles.emptyText}>Ban chua co don hang nao.</ThemedText>
+            <ThemedText style={styles.emptyText}>Bạn chưa có đơn hàng nào.</ThemedText>
           </View>
         }
       />

@@ -152,7 +152,7 @@ export default function RecommendationDetailScreen() {
   };
   
   const formatCategoryLabel = (value: string) => {
-    if (!value) return 'Other';
+    if (!value) return 'Khác';
     return value
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
