@@ -1,30 +1,42 @@
-import { BaseResponse } from '@/core/api/types';
+import { BaseResponse, PaginatedResponse } from '@/core/api/types';
 
-export interface OrderItemRequest {
+export interface CustomIngredientRequest {
   ingredientId: string;
   quantity: number;
-  unit: string;
-  price?: number;
-  lineTotal?: number;
+  unit?: string;
+}
+
+export interface OrderItemRequest {
+  recipeId: string;
+  servings: number;
+  customIngredients?: CustomIngredientRequest[];
 }
 
 export interface OrderRequest {
   deliveryAddressText: string;
   deliveryPhone?: string;
   note?: string;
-  totalAmount: number;
   paymentMethod?: string;
   items: OrderItemRequest[];
 }
 
-export interface OrderResponseItem {
-  id: string;
+export interface OrderIngredientResponse {
   ingredientId: string;
   ingredientName: string;
-  quantity: number;
-  unit: string;
-  price?: number;
-  lineTotal?: number;
+  quantityBase: number;
+  baseUnit: string;
+  unitPriceSnapshot: number;
+  lineTotal: number;
+}
+
+export interface OrderResponseItem {
+  id: string;
+  recipeId: string;
+  recipeName: string;
+  servings: number;
+  pricePerServingSnapshot: number;
+  lineTotal: number;
+  ingredients: OrderIngredientResponse[];
 }
 
 export interface OrderResponse {
@@ -44,3 +56,4 @@ export interface OrderResponse {
 }
 
 export type OrderApiResponse = BaseResponse<OrderResponse>;
+export type OrderListApiResponse = BaseResponse<PaginatedResponse<OrderResponse>>;
