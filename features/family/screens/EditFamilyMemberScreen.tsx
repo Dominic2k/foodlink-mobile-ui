@@ -71,6 +71,7 @@ export default function EditFamilyMemberScreen() {
   const [form, setForm] = useState<FamilyMemberRequest>(INITIAL_FORM);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const today = new Date();
 
   const fetchData = useCallback(async () => {
     try {
@@ -123,6 +124,18 @@ export default function EditFamilyMemberScreen() {
     if (!form.displayName.trim()) {
       Alert.alert('Lỗi', 'Vui lòng nhập tên thành viên');
       return;
+    }
+
+    if (form.birthDate) {
+      const selectedBirthDate = new Date(form.birthDate);
+      const maxBirthDate = new Date();
+      selectedBirthDate.setHours(0, 0, 0, 0);
+      maxBirthDate.setHours(0, 0, 0, 0);
+
+      if (selectedBirthDate > maxBirthDate) {
+        Alert.alert('Lỗi', 'Ngày sinh không được lớn hơn ngày hiện tại');
+        return;
+      }
     }
 
     setSaving(true);
@@ -278,6 +291,7 @@ export default function EditFamilyMemberScreen() {
             value={new Date(form.birthDate || Date.now())}
             mode="date"
             display="default"
+            maximumDate={today}
             onChange={(event: any, date?: Date) => {
               setShowDatePicker(false);
               if (date) {
