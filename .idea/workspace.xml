@@ -6,9 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="4d04d2b4-4191-447a-bed8-597b84bc0046" name="Changes" comment="Merge remote-tracking branch 'origin/main'&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/features/checkout/screens/OrderDetailScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/features/checkout/screens/OrderDetailScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/features/checkout/screens/OrderHistoryScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/features/checkout/screens/OrderHistoryScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/features/checkout/services/orderService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/features/checkout/services/orderService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/features/family/screens/EditFamilyMemberScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/features/family/screens/EditFamilyMemberScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -51,7 +50,7 @@
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
-    "git-widget-placeholder": "feat/FL-27",
+    "git-widget-placeholder": "fix/FL-106",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "D:/foodlink-project/FoodlinkMobile",
     "settings.editor.selected.configurable": "com.android.studio.ml.bot.mainConfigurable"
