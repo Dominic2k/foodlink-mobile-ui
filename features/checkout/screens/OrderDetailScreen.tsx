@@ -49,20 +49,20 @@ export default function OrderDetailScreen() {
   const handleCancelOrder = () => {
     if (!orderId) return;
 
-    Alert.alert('Xac nhan huy don', 'Ban co chac chan muon huy don hang nay khong?', [
-      { text: 'Khong', style: 'cancel' },
+    Alert.alert('Xác nhận hủy đơn', 'Bạn có chắc chắn muốn hủy đơn hàng này không?', [
+      { text: 'Không', style: 'cancel' },
       {
-        text: 'Huy don',
+        text: 'Hủy đơn',
         style: 'destructive',
         onPress: async () => {
           try {
             setCanceling(true);
             await orderService.cancelMyOrder(orderId);
             await loadOrderDetail();
-            Alert.alert('Thanh cong', 'Don hang da duoc huy.');
+            Alert.alert('Thành công', 'Đơn hàng đã được hủy.');
           } catch (error: any) {
             console.error('Failed to cancel order:', error);
-            Alert.alert('Loi', error?.message || 'Khong the huy don hang luc nay.');
+            Alert.alert('Lỗi', error?.message || 'Không thể hủy đơn hàng lúc này.');
           } finally {
             setCanceling(false);
           }
@@ -87,7 +87,7 @@ export default function OrderDetailScreen() {
 
         map.set(key, {
           key,
-          ingredientName: ing.ingredientName || 'Nguyen lieu',
+          ingredientName: ing.ingredientName || 'Nguyên liệu',
           baseUnit: ing.baseUnit || '',
           quantityBase: Number(ing.quantityBase || 0),
           lineTotal: Number(ing.lineTotal || 0),
@@ -130,10 +130,10 @@ export default function OrderDetailScreen() {
 
   const getStatusText = (status?: string) => {
     switch ((status || '').toLowerCase()) {
-      case 'pending': return 'Dang cho';
-      case 'processing': return 'Dang xu ly';
-      case 'completed': return 'Hoan thanh';
-      case 'canceled': return 'Da huy';
+      case 'pending': return 'Đang chờ';
+      case 'processing': return 'Đang xử lý';
+      case 'completed': return 'Hoàn thành';
+      case 'canceled': return 'Đã hủy';
       default: return status || '--';
     }
   };
@@ -150,9 +150,9 @@ export default function OrderDetailScreen() {
     return (
       <ThemedView style={styles.centered}>
         <Ionicons name="alert-circle-outline" size={40} color="#9CA3AF" />
-        <ThemedText style={styles.emptyText}>Khong tim thay don hang.</ThemedText>
+        <ThemedText style={styles.emptyText}>Không tìm thấy đơn hàng.</ThemedText>
         <Pressable style={styles.backAction} onPress={() => router.back()}>
-          <ThemedText style={styles.backActionText}>Quay lai</ThemedText>
+          <ThemedText style={styles.backActionText}>Quay lại</ThemedText>
         </Pressable>
       </ThemedView>
     );
@@ -164,15 +164,15 @@ export default function OrderDetailScreen() {
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#1F2937" />
         </Pressable>
-        <ThemedText style={styles.headerTitle}>Chi tiet don hang</ThemedText>
+        <ThemedText style={styles.headerTitle}>Chi tiết đơn hàng</ThemedText>
       </View>
 
       <ScrollView contentContainerStyle={styles.contentContainer}>
         <View style={styles.card}>
           <View style={styles.rowBetween}>
             <View>
-              <ThemedText style={styles.orderCode}>Don hang #{order.id.slice(0, 8).toUpperCase()}</ThemedText>
-              <ThemedText style={styles.metaText}>Tao luc: {formatDate(order.createdAt)}</ThemedText>
+              <ThemedText style={styles.orderCode}>Đơn hàng #{order.id.slice(0, 8).toUpperCase()}</ThemedText>
+              <ThemedText style={styles.metaText}>Tạo lúc: {formatDate(order.createdAt)}</ThemedText>
             </View>
             <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(order.status)}20` }]}>
               <ThemedText style={[styles.statusText, { color: getStatusColor(order.status) }]}>
@@ -183,20 +183,20 @@ export default function OrderDetailScreen() {
 
           <View style={styles.divider} />
 
-          <ThemedText style={styles.infoLine}>Dia chi: {order.deliveryAddressText || '--'}</ThemedText>
-          <ThemedText style={styles.infoLine}>Dien thoai: {order.deliveryPhone || '--'}</ThemedText>
-          <ThemedText style={styles.infoLine}>Thanh toan: {order.paymentMethod || '--'}</ThemedText>
-          <ThemedText style={styles.infoLine}>Ghi chu: {order.note || '--'}</ThemedText>
-          <ThemedText style={styles.totalAmount}>Tong tien: {formatCurrency(order.totalAmount)}</ThemedText>
+          <ThemedText style={styles.infoLine}>Địa chỉ: {order.deliveryAddressText || '--'}</ThemedText>
+          <ThemedText style={styles.infoLine}>Điện thoại: {order.deliveryPhone || '--'}</ThemedText>
+          <ThemedText style={styles.infoLine}>Thanh toán: {order.paymentMethod || '--'}</ThemedText>
+          <ThemedText style={styles.infoLine}>Ghi chú: {order.note || '--'}</ThemedText>
+          <ThemedText style={styles.totalAmount}>Tổng tiền: {formatCurrency(order.totalAmount)}</ThemedText>
           {order.status?.toLowerCase() === 'pending' ? (
             <Pressable style={[styles.cancelBtn, canceling && styles.cancelBtnDisabled]} disabled={canceling} onPress={handleCancelOrder}>
-              <ThemedText style={styles.cancelBtnText}>{canceling ? 'Dang huy...' : 'Huy don'}</ThemedText>
+              <ThemedText style={styles.cancelBtnText}>{canceling ? 'Đang hủy...' : 'Hủy đơn'}</ThemedText>
             </Pressable>
           ) : null}
         </View>
 
         <View style={styles.card}>
-          <ThemedText style={styles.sectionTitle}>Danh sach mon da chon</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Danh sách món đã chọn</ThemedText>
           {(order.items || []).map((item) => (
             <Pressable
               key={item.id}
@@ -215,19 +215,19 @@ export default function OrderDetailScreen() {
               <View style={{ flex: 1 }}>
                 <ThemedText style={styles.linkTitle}>{item.recipeName}</ThemedText>
                 <ThemedText style={styles.linkSub}>
-                  Khau phan x{item.servings} - {formatCurrency(item.lineTotal)}
+                  Khẩu phần x{item.servings} - {formatCurrency(item.lineTotal)}
                 </ThemedText>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
             </Pressable>
           ))}
           {(!order.items || order.items.length === 0) && (
-            <ThemedText style={styles.emptyHint}>Khong co mon nao trong don.</ThemedText>
+            <ThemedText style={styles.emptyHint}>Không có món nào trong đơn.</ThemedText>
           )}
         </View>
 
         <View style={styles.card}>
-          <ThemedText style={styles.sectionTitle}>Nguyen lieu da xac nhan mua</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Nguyên liệu đã xác nhận mua</ThemedText>
           {aggregatedIngredients.map((ing) => (
             <View key={ing.key} style={styles.ingRow}>
               <View style={{ flex: 1 }}>
@@ -240,7 +240,7 @@ export default function OrderDetailScreen() {
             </View>
           ))}
           {aggregatedIngredients.length === 0 && (
-            <ThemedText style={styles.emptyHint}>Khong co nguyen lieu nao.</ThemedText>
+            <ThemedText style={styles.emptyHint}>Không có nguyên liệu nào.</ThemedText>
           )}
         </View>
       </ScrollView>

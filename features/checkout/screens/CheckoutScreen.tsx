@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/shared/components/common/ThemedText';
@@ -9,6 +10,8 @@ import { recommendationService } from '@/features/recommendation/services/recomm
 import { RecommendationItem } from '@/features/recommendation/types';
 import { orderService } from '@/features/checkout/services/orderService';
 import { OrderItemRequest, OrderRequest } from '@/features/checkout/types';
+import { paymentService } from '@/features/checkout/services/paymentService';
+import * as WebBrowser from 'expo-web-browser';
 
 export default function CheckoutScreen() {
   const { recipeId, selections, servings } = useLocalSearchParams<{ recipeId?: string, selections?: string, servings?: string }>();
@@ -82,13 +85,37 @@ export default function CheckoutScreen() {
     setEditableIngredients(prev => prev.filter(ing => ing.ingredientId !== id));
   };
 
+
   const handlePayment = async () => {
     if (editableIngredients.length === 0) return;
 
     try {
       setSubmitting(true);
-      const grandTotal = editableIngredients.reduce((sum, ing) => sum + (ing.totalPrice ?? 0), 0);
+      const actualTotal = editableIngredients.reduce((sum, ing) => sum + (ing.totalPrice ?? 0), 0);
+      
+      // Stripe minimum for VND is ~12,000 VND. Force at least 15,000 for demo if needed.
+      const grandTotal = Math.max(actualTotal, 15000);
 
+      // 1. Create Stripe Checkout Session in Backend with Redirect URLs
+      const redirectUrl = Linking.createURL('payment-success');
+      console.log('[Stripe Checkout] Redirect URL:', redirectUrl);
+      
+      console.log('[Stripe Checkout] Creating session for amount:', grandTotal);
+      const { url } = await paymentService.createCheckoutSession(grandTotal, redirectUrl, redirectUrl);
+      
+      if (!url) {
+        throw new Error("Không nhận được URL thanh toán từ server.");
+      }
+
+      // 2. Open Stripe Hosted Checkout Page with AuthSession for automatic dismissal
+      const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
+      
+      if (result.type !== 'success' && result.type !== 'dismiss') {
+        setSubmitting(false);
+        return;
+      }
+
+      // 3. Create order in backend after returning from Stripe
       let orderItems: OrderItemRequest[] = [];
       if (selections) {
         const parsedSelections = JSON.parse(selections);
@@ -110,33 +137,26 @@ export default function CheckoutScreen() {
       }));
 
       const request: OrderRequest = {
-        deliveryAddressText: "Địa chỉ mặc định", // Mocked for now
-        deliveryPhone: "0123456789", // Mocked for now
-        paymentMethod: "COD",
-        note: `Đơn hàng nguyên liệu: ${item?.recipeName || 'Nhiều món'}`,
-        items: orderItems.map((oi, idx) => ({
+        deliveryAddressText: "Địa chỉ mặc định (Stripe Checkout)",
+        deliveryPhone: "0123456789", 
+        paymentMethod: "STRIPE",
+        note: `Đơn hàng đã thanh toán qua Stripe Checkout: ${item?.recipeName || 'Nhiều món'}`,
+        items: orderItems.map((oi) => ({
           ...oi,
           customIngredients: (orderItems.length === 1 || (recipeId && oi.recipeId === recipeId)) ? customIngredients : undefined
         }))
       };
 
-      console.log('[DEBUG] Creating order request:', JSON.stringify(request, null, 2));
-
       await orderService.createOrder(request);
 
       Alert.alert(
         "Thanh toán thành công",
-        "Đơn hàng nguyên liệu của bạn đã được đặt. Tính năng thanh toán online sẽ được tích hợp với bên thứ ba trong tương lai.",
-        [
-          { 
-            text: "Đồng ý", 
-            onPress: () => router.back() // Navigate back to recommendation screen
-          }
-        ]
+        "Đơn hàng của bạn đã được đặt thành công sau khi thanh toán qua Stripe.",
+        [{ text: "Đồng ý", onPress: () => router.push('/order-history') }]
       );
-    } catch (error) {
-      console.error('Failed to create order:', error);
-      Alert.alert("Lỗi", "Không thể tạo đơn hàng lúc này.");
+    } catch (error: any) {
+      console.error('Failed to complete Stripe Checkout flow:', error);
+      Alert.alert("Lỗi thanh toán", error.message || "Quá trình thanh toán gặp sự cố.");
     } finally {
       setSubmitting(false);
     }
