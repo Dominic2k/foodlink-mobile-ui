@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/shared/components/common/ThemedText';
@@ -10,8 +10,9 @@ import { recommendationService } from '@/features/recommendation/services/recomm
 import { RecommendationEvaluationStatus, RecommendationItem } from '@/features/recommendation/types';
 
 export default function RecommendationDetailScreen() {
-  const { recipeId } = useLocalSearchParams<{ recipeId?: string }>();
+  const { recipeId, returnTo, orderId } = useLocalSearchParams<{ recipeId?: string; returnTo?: string; orderId?: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
   const [item, setItem] = useState<RecommendationItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedInstructions, setExpandedInstructions] = useState(false);
@@ -39,6 +40,39 @@ export default function RecommendationDetailScreen() {
   useEffect(() => {
     loadDetail();
   }, [loadDetail]);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <Pressable
+          onPress={() => {
+            if (returnTo === 'order-detail') {
+              if (router.canGoBack()) {
+                router.back();
+                return;
+              }
+              if (orderId) {
+                router.replace({ pathname: '/order-detail', params: { orderId } });
+                return;
+              }
+            }
+            if (returnTo === 'recommendation') {
+              router.navigate('/recommendation');
+              return;
+            }
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
+            router.navigate('/recommendation');
+          }}
+          style={{ marginLeft: 15 }}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </Pressable>
+      ),
+    });
+  }, [navigation, returnTo, orderId, router]);
 
   useEffect(() => {
     const base = item?.baseServings && item.baseServings > 0 ? item.baseServings : 1;
