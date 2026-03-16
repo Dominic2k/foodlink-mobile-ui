@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -137,8 +138,6 @@ export default function RecommendationDetailScreen() {
   }
 
   const statusLabel = !item.evaluated ? 'Chưa đánh giá' : item.suitable ? 'Phù hợp' : 'Không phù hợp';
-  const statusStyle = !item.evaluated ? styles.statusPending : item.suitable ? styles.statusSuitable : styles.statusUnsuitable;
-  const statusTextStyle = !item.evaluated ? styles.statusPendingText : item.suitable ? styles.statusSuitableText : styles.statusUnsuitableText;
   const ingredients = item.ingredients ?? [];
 
   const fmt = (value?: number | null) => (typeof value === 'number' ? value.toFixed(2) : '--');
@@ -176,10 +175,31 @@ export default function RecommendationDetailScreen() {
         )}
 
       <ThemedView style={styles.card}>
-        <ThemedText style={styles.name}>{item.recipeName}</ThemedText>
-
-        <View style={[styles.statusBadge, statusStyle]}>
-          <ThemedText style={[styles.statusText, statusTextStyle]}>{statusLabel}</ThemedText>
+        <View style={styles.titleRow}>
+          <ThemedText style={styles.name}>{item.recipeName}</ThemedText>
+          <View 
+            style={[
+              styles.luxuryDetailBadge, 
+              { 
+                backgroundColor: item.evaluated ? (item.suitable ? '#ECFDF5' : '#FEF2F2') : '#F3F4F6',
+                borderColor: item.evaluated ? (item.suitable ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)') : '#D1D5DB'
+              }
+            ]}
+          >
+            <View style={styles.detailBadgeContent}>
+              {item.evaluated && (
+                <Ionicons 
+                  name={item.suitable ? "checkmark-circle" : "close-circle"} 
+                  size={14} 
+                  color={item.suitable ? '#065F46' : '#991B1B'} 
+                  style={{ marginRight: 4 }} 
+                />
+              )}
+              <ThemedText style={[styles.luxuryDetailBadgeText, { color: item.evaluated ? (item.suitable ? '#065F46' : '#991B1B') : '#6B7280' }]}>
+                {statusLabel}
+              </ThemedText>
+            </View>
+          </View>
         </View>
 
         {needsRecommendationRefresh && (evaluationStatus === 'queued' || evaluationStatus === 'processing') ? (
@@ -190,23 +210,43 @@ export default function RecommendationDetailScreen() {
         ) : null}
 
         <View style={styles.metaRow}>
-          <Ionicons name="star" size={16} color="#F59E0B" />
-          <ThemedText style={styles.metaText}>
-            {item.evaluated ? `${item.score}/100` : '--/100'}
-          </ThemedText>
+          <View 
+            style={[
+              styles.luxuryDetailScorePill,
+              {
+                backgroundColor: item.evaluated ? (item.score >= 80 ? '#F0FDF4' : item.score >= 60 ? '#FFFBEB' : '#FEF2F2') : '#F9FAFB',
+                borderColor: item.evaluated ? (item.score >= 80 ? 'rgba(34, 197, 94, 0.3)' : item.score >= 60 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(239, 68, 68, 0.3)') : 'rgba(0,0,0,0.05)'
+              }
+            ]}
+          >
+            <Ionicons 
+              name="flash" 
+              size={12} 
+              color={item.evaluated ? (item.score >= 80 ? '#059669' : item.score >= 60 ? '#D97706' : '#DC2626') : '#9CA3AF'} 
+              style={{ marginRight: 6 }} 
+            />
+            <ThemedText 
+              style={[
+                styles.luxuryDetailScoreText, 
+                { color: item.evaluated ? (item.score >= 80 ? '#059669' : item.score >= 60 ? '#D97706' : '#DC2626') : '#6B7280' }
+              ]}
+            >
+              {item.evaluated ? `Điểm số: ${item.score}/100` : '--/100'}
+            </ThemedText>
+          </View>
         </View>
 
         <View style={styles.categoriesRow}>
           {item.dishCategories && item.dishCategories.map(cat => (
-            <View key={cat} style={[styles.categoryBadge, { backgroundColor: '#E2F1E7', borderColor: '#B5D8C1' }]}>
+            <View key={cat} style={styles.premiumDetailChip}>
               <Ionicons name="restaurant-outline" size={12} color="#2C5C3F" />
-              <ThemedText style={[styles.categoryBadgeText, { color: '#2C5C3F' }]}>{cat}</ThemedText>
+              <ThemedText style={styles.premiumDetailChipText}>{cat}</ThemedText>
             </View>
           ))}
           {item.category && item.category !== 'other' ? (
-            <View style={styles.categoryBadge}>
+            <View style={[styles.premiumDetailChip, { backgroundColor: '#F8ECEA', borderColor: '#E8C7C2' }]}>
               <Ionicons name="pricetag-outline" size={12} color="#8F4D44" />
-              <ThemedText style={styles.categoryBadgeText}>{formatCategoryLabel(item.category)}</ThemedText>
+              <ThemedText style={[styles.premiumDetailChipText, { color: '#8F4D44' }]}>{formatCategoryLabel(item.category)}</ThemedText>
             </View>
           ) : null}
         </View>
@@ -415,33 +455,16 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 12,
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
   name: {
     fontSize: 22,
     fontWeight: '800',
     color: '#1F2937',
-  },
-  statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  statusPending: {
-    backgroundColor: '#F3F4F6',
-    borderColor: '#D1D5DB',
-  },
-  statusSuitable: {
-    backgroundColor: '#ECFDF3',
-    borderColor: '#86EFAC',
-  },
-  statusUnsuitable: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FCA5A5',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '700',
   },
   refreshNotice: {
     flexDirection: 'row',
@@ -460,24 +483,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#8F4D44',
   },
-  statusPendingText: {
-    color: '#4B5563',
-  },
-  statusSuitableText: {
-    color: '#15803D',
-  },
-  statusUnsuitableText: {
-    color: '#B91C1C',
-  },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-  },
-  metaText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
   },
   categoriesRow: {
     flexDirection: 'row',
@@ -485,21 +494,52 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
   },
-  categoryBadge: {
+  luxuryDetailBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  detailBadgeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  luxuryDetailBadgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  luxuryDetailScorePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginTop: 4,
+    borderWidth: 1,
+  },
+  luxuryDetailScoreText: {
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  premiumDetailChip: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 5,
-    backgroundColor: '#E8E0F0',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
     marginTop: 4,
   },
-  categoryBadgeText: {
+  premiumDetailChipText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#6B4C8A',
+    fontWeight: '700',
+    color: '#4B5563',
   },
   recipeInfoRow: {
     flexDirection: 'row',
@@ -523,12 +563,17 @@ const styles = StyleSheet.create({
     color: '#8F4D44',
   },
   priceCard: {
-    gap: 10,
+    gap: 12,
     borderWidth: 1,
     borderColor: '#F0D9D5',
     borderRadius: 14,
-    backgroundColor: '#FFF8F4',
-    padding: 12,
+    backgroundColor: '#FFFDFC',
+    padding: 14,
+    shadowColor: '#A75A50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   priceRow: {
     flexDirection: 'row',
@@ -537,8 +582,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   priceRowTotal: {
-    paddingTop: 10,
+    paddingTop: 12,
     borderTopWidth: 1,
+    borderStyle: 'dashed',
     borderTopColor: '#E8C7C2',
   },
   priceLabel: {
@@ -557,11 +603,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   stepperBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#D9B4AE',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#C1766B',
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -570,25 +616,26 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   servingValue: {
-    minWidth: 24,
+    minWidth: 28,
     textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     color: '#1F2937',
   },
   servingHint: {
     fontSize: 12,
-    color: '#7E3F38',
+    color: '#828282',
+    fontStyle: 'italic',
   },
   totalPriceLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#7E3F38',
+    color: '#1F2937',
   },
   totalPriceValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#A75A50',
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#C1766B',
   },
   expandBtn: {
     flexDirection: 'row',
@@ -596,12 +643,10 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     gap: 4,
     marginTop: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    backgroundColor: '#FFF7F5',
-    borderWidth: 1,
-    borderColor: '#E8C7C2',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    backgroundColor: '#F8ECEA',
   },
   expandBtnText: {
     fontSize: 12,
@@ -609,17 +654,21 @@ const styles = StyleSheet.create({
     color: '#8F4D44',
   },
   section: {
-    gap: 6,
+    gap: 8,
+    marginTop: 8,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '800',
-    color: '#8F4D44',
+    color: '#1F2937',
+    borderLeftWidth: 4,
+    borderLeftColor: '#C1766B',
+    paddingLeft: 10,
   },
   sectionText: {
     fontSize: 14,
-    lineHeight: 20,
-    color: '#334155',
+    lineHeight: 22,
+    color: '#4B5563',
   },
   nutritionGrid: {
     flexDirection: 'row',
@@ -630,18 +679,19 @@ const styles = StyleSheet.create({
     width: '48%',
     borderWidth: 1,
     borderColor: '#F0D9D5',
-    borderRadius: 10,
-    padding: 10,
-    backgroundColor: '#FFFDFC',
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: '#FFFFFF',
   },
   nutritionLabel: {
     fontSize: 11,
-    color: '#8F4D44',
+    color: '#6B7280',
     fontWeight: '600',
+    textTransform: 'uppercase',
   },
   nutritionValue: {
     marginTop: 4,
-    fontSize: 16,
+    fontSize: 18,
     color: '#1F2937',
     fontWeight: '800',
   },
@@ -649,14 +699,16 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 12,
     color: '#6B7280',
+    fontStyle: 'italic',
   },
   ingredientRow: {
     borderWidth: 1,
     borderColor: '#F0D9D5',
-    borderRadius: 10,
+    borderRadius: 12,
     backgroundColor: '#FFFFFF',
-    padding: 10,
-    gap: 4,
+    padding: 12,
+    gap: 6,
+    marginBottom: 8,
   },
   ingredientTop: {
     flexDirection: 'row',
@@ -666,23 +718,23 @@ const styles = StyleSheet.create({
   },
   ingredientName: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: '#1F2937',
   },
   ingredientQty: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#8F4D44',
+    color: '#C1766B',
   },
   ingredientNutrition: {
     fontSize: 12,
-    color: '#475569',
+    color: '#6B7280',
   },
   ingredientPriceText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#A75A50',
+    color: '#8F4D44',
   },
   bottomFixedBar: {
     padding: 16,

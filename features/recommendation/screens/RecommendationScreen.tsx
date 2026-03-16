@@ -1,5 +1,6 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 
@@ -258,52 +259,94 @@ export default function RecommendationScreen() {
   const renderItem = ({ item }: { item: RecommendationItem }) => {
     const quantity = selectedMap[item.recipeId] ?? 0;
     const label = !item.evaluated ? 'Chưa đánh giá' : item.suitable ? 'Phù hợp' : 'Không phù hợp';
-    const badgeStyle = !item.evaluated ? styles.badgePending : item.suitable ? styles.badgeOk : styles.badgeNo;
-    const badgeTextStyle = !item.evaluated ? styles.badgeTextPending : item.suitable ? styles.badgeTextOk : styles.badgeTextNo;
+
+    const getScoreColor = (score: number): [string, string] => {
+      if (score >= 80) return ['#22C55E', '#16A34A']; // Green
+      if (score >= 60) return ['#F59E0B', '#D97706']; // Orange
+      return ['#EF4444', '#DC2626']; // Red
+    };
+
+    const getBadgeStyles = () => {
+      if (!item.evaluated) return { bg: '#F3F4F6', text: '#6B7280', border: '#D1D5DB' };
+      if (item.suitable) return { bg: '#ECFDF5', text: '#065F46', border: 'rgba(16, 185, 129, 0.3)' };
+      return { bg: '#FEF2F2', text: '#991B1B', border: 'rgba(239, 68, 68, 0.3)' };
+    };
+
+    const badgeStyles = getBadgeStyles();
+    const scoreColor = item.evaluated ? (item.score >= 80 ? '#059669' : item.score >= 60 ? '#D97706' : '#DC2626') : '#9CA3AF';
+    const scoreBg = item.evaluated ? (item.score >= 80 ? '#F0FDF4' : item.score >= 60 ? '#FFFBEB' : '#FEF2F2') : '#F9FAFB';
+    const scoreBorder = item.evaluated ? (item.score >= 80 ? 'rgba(34, 197, 94, 0.2)' : item.score >= 60 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)') : 'rgba(0,0,0,0.05)';
 
     return (
       <Pressable onPress={() => handleOpenDetail(item.recipeId)}>
         <ThemedView style={styles.card}>
-        {item.imageUrl ? (
-          <Image source={{ uri: item.imageUrl }} style={styles.image} />
-        ) : (
-          <View style={[styles.image, styles.imageFallback]}>
-            <Ionicons name="restaurant-outline" size={24} color="#C1766B" />
-          </View>
-        )}
-
-        <View style={styles.content}>
-          <View style={styles.titleRow}>
-            <ThemedText style={styles.name} numberOfLines={1}>{item.recipeName}</ThemedText>
-            <View style={[styles.badge, badgeStyle]}>
-              <ThemedText style={[styles.badgeText, badgeTextStyle]}>{label}</ThemedText>
+          {item.imageUrl ? (
+            <Image source={{ uri: item.imageUrl }} style={styles.image} />
+          ) : (
+            <View style={[styles.image, styles.imageFallback]}>
+              <Ionicons name="restaurant-outline" size={24} color="#C1766B" />
             </View>
-          </View>
+          )}
 
-          <View style={styles.metaRow}>
-            <Ionicons name="star" size={14} color="#F59E0B" />
-            <ThemedText style={styles.score}>{item.evaluated ? `${item.score}/100` : '--/100'}</ThemedText>
-            {item.pricePerServing != null ? (
-              <View style={styles.pricePill}>
-                <Ionicons name="cash-outline" size={12} color="#8F4D44" />
-                <ThemedText style={styles.pricePillText}>{formatCurrency(item.pricePerServing)}/phần</ThemedText>
+          <View style={styles.content}>
+            <View style={styles.titleRow}>
+              <ThemedText style={styles.name} numberOfLines={1}>{item.recipeName}</ThemedText>
+              <View 
+                style={[
+                  styles.luxuryBadge, 
+                  { backgroundColor: badgeStyles.bg, borderColor: badgeStyles.border }
+                ]}
+              >
+                <View style={styles.badgeContent}>
+                  {item.evaluated && (
+                    <Ionicons 
+                      name={item.suitable ? "checkmark-circle" : "close-circle"} 
+                      size={12} 
+                      color={badgeStyles.text} 
+                      style={{ marginRight: 4 }} 
+                    />
+                  )}
+                  <ThemedText style={[styles.luxuryBadgeText, { color: badgeStyles.text }]}>
+                    {label}
+                  </ThemedText>
+                </View>
               </View>
-            ) : null}
-            
+            </View>
+
+            <View style={styles.metaRow}>
+              <View 
+                style={[
+                  styles.luxuryScorePill, 
+                  { backgroundColor: scoreBg, borderColor: scoreBorder }
+                ]}
+              >
+                <Ionicons name="flash" size={10} color={scoreColor} style={{ marginRight: 3 }} />
+                <ThemedText style={[styles.luxuryScoreText, { color: scoreColor }]}>
+                  {item.evaluated ? `${item.score}/100` : '--/100'}
+                </ThemedText>
+              </View>
+
+              {item.pricePerServing != null ? (
+                <View style={styles.luxuryPricePill}>
+                  <Ionicons name="pricetag" size={12} color="#8F4D44" />
+                  <ThemedText style={styles.luxuryPriceText}>{formatCurrency(item.pricePerServing)}</ThemedText>
+                </View>
+              ) : null}
+            </View>
+
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
               {item.dishCategories && item.dishCategories.map(cat => (
-                <View key={cat} style={[styles.categoryChip, { backgroundColor: '#E2F1E7' }]}>
-                  <ThemedText style={[styles.categoryChipText, { color: '#2C5C3F' }]}>{cat}</ThemedText>
+                <View key={cat} style={styles.premiumChip}>
+                  <ThemedText style={styles.premiumChipText}>{cat}</ThemedText>
                 </View>
               ))}
               {item.category && item.category !== 'other' ? (
-                <View style={styles.categoryChip}>
-                  <ThemedText style={styles.categoryChipText}>{formatCategoryLabel(item.category)}</ThemedText>
+                <View style={[styles.premiumChip, { backgroundColor: '#F8ECEA' }]}>
+                  <ThemedText style={[styles.premiumChipText, { color: '#8F4D44' }]}>{formatCategoryLabel(item.category)}</ThemedText>
                 </View>
               ) : null}
             </ScrollView>
           </View>
-        </View>
 
         <View style={styles.actionGroup}>
           <Pressable style={[styles.actionBtn, quantity <= 0 && styles.actionBtnDisabled]} onPress={() => handleRemove(item.recipeId)} disabled={quantity <= 0}>
@@ -778,79 +821,73 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     flex: 1,
   },
-  badge: {
+  luxuryBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
+    paddingVertical: 3,
+    borderRadius: 6,
     borderWidth: 1,
   },
-  badgeOk: {
-    backgroundColor: '#ECFDF3',
-    borderColor: '#86EFAC',
+  badgeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  badgeNo: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FCA5A5',
-  },
-  badgePending: {
-    backgroundColor: '#F3F4F6',
-    borderColor: '#D1D5DB',
-  },
-  badgeText: {
+  luxuryBadgeText: {
     fontSize: 10,
-    fontWeight: '700',
-  },
-  badgeTextOk: {
-    color: '#15803D',
-  },
-  badgeTextNo: {
-    color: '#B91C1C',
-  },
-  badgeTextPending: {
-    color: '#4B5563',
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  pricePill: {
-    marginLeft: 6,
+  luxuryScorePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 999,
-    backgroundColor: '#FFF4E8',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#F4D2A7',
   },
-  pricePillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#8F4D44',
+  luxuryScoreText: {
+    fontSize: 11,
+    fontWeight: '900',
   },
-  score: {
+  luxuryPricePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 4,
+  },
+  luxuryPriceText: {
     fontSize: 12,
-    fontWeight: '600',
-  },
-  categoryChip: {
-    marginLeft: 4,
-    backgroundColor: '#E8E0F0',
-    borderRadius: 999,
-    paddingHorizontal: 7,
-    paddingVertical: 1,
-  },
-  categoryChipText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#6B4C8A',
+    fontWeight: '700',
+    color: '#4B5563',
   },
   chipsContainer: {
     flexDirection: 'row',
-    gap: 4,
-    marginLeft: 4,
+    marginTop: 4,
+  },
+  premiumChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: '#E2F1E7',
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  premiumChipText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#2C5C3F',
   },
   actionGroup: {
     gap: 6,

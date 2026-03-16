@@ -83,17 +83,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(res.data);
           // Record app visit (fire-and-forget)
           api.post('/api/visits', {}).catch(() => {});
-        } catch {
-          // Token invalid/expired -> clear local auth
-          api.setToken(null);
-          await storage.removeToken();
-          setProfile(null);
-          setState({
-            user: null,
-            token: null,
-            isLoading: false,
-            isAuthenticated: false,
-          });
+        } catch (error: any) {
+          // Token invalid/expired -> only clear if status is 401
+          // Otherwise keep token and assume it's a transient network issue
+          if (error.message && error.message.includes('401')) {
+            console.warn('[Auth] Token expired or invalid (401), logging out');
+            api.setToken(null);
+            await storage.removeToken();
+            setProfile(null);
+            setState({
+              user: null,
+              token: null,
+              isLoading: false,
+              isAuthenticated: false,
+            });
+          } else {
+            console.error('[Auth] Failed to load profile during init:', error);
+            setState(prev => ({ ...prev, isLoading: false }));
+          }
         }
       } else {
         setState(prev => ({ ...prev, isLoading: false }));

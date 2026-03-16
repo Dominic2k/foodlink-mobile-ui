@@ -21,6 +21,7 @@ const MAPPING = {
   'fork.knife': 'restaurant',
   'bell.fill': 'notifications',
   'person.fill': 'person',
+  'heart.text.square.fill': 'medical-services',
 } as IconMapping;
 
 /**
