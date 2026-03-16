@@ -97,18 +97,19 @@ export default function CheckoutScreen() {
       const grandTotal = Math.max(actualTotal, 15000);
 
       // 1. Create Stripe Checkout Session in Backend with Redirect URLs
-      const redirectUrl = Linking.createURL('payment-success');
-      console.log('[Stripe Checkout] Redirect URL:', redirectUrl);
+      const successUrl = Linking.createURL('payment-success');
+      const cancelUrl = Linking.createURL('payment-cancel');
+      console.log('[Stripe Checkout] URLs:', { successUrl, cancelUrl });
       
       console.log('[Stripe Checkout] Creating session for amount:', grandTotal);
-      const { url } = await paymentService.createCheckoutSession(grandTotal, redirectUrl, redirectUrl);
+      const { url } = await paymentService.createCheckoutSession(grandTotal, successUrl, cancelUrl);
       
       if (!url) {
         throw new Error("Không nhận được URL thanh toán từ server.");
       }
 
       // 2. Open Stripe Hosted Checkout Page with AuthSession for automatic dismissal
-      const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
+      const result = await WebBrowser.openAuthSessionAsync(url, successUrl);
       
       if (result.type !== 'success' && result.type !== 'dismiss') {
         setSubmitting(false);

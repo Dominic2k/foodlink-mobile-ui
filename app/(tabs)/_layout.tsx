@@ -68,10 +68,30 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="health"
+        options={{
+          title: 'Sức khỏe',
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="heart.text.square.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="notification"
         options={{
           title: 'Thông báo',
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="bell.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="health-detail"
+        options={{
+          href: null,
+          headerShown: true,
+          title: 'Chi tiết sức khỏe',
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.navigate('/health')} style={{ marginLeft: 15 }}>
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
+          ),
         }}
       />
       <Tabs.Screen
