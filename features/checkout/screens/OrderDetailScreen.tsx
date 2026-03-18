@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { ThemedText } from '@/shared/components/common/ThemedText';
 import { ThemedView } from '@/shared/components/common/ThemedView';
 import { orderService } from '@/features/checkout/services/orderService';
-import { OrderIngredientResponse, OrderResponse } from '@/features/checkout/types';
+import { OrderIngredientResponse, OrderResponse, OrderResponseItem } from '@/features/checkout/types';
 
 const BRAND = '#C1766B';
 
@@ -25,6 +25,27 @@ export default function OrderDetailScreen() {
   const [order, setOrder] = useState<OrderResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [canceling, setCanceling] = useState(false);
+  const [ratingValues, setRatingValues] = useState<Record<string, number>>({});
+  const [commentValues, setCommentValues] = useState<Record<string, string>>({});
+  const [submittingRatingId, setSubmittingRatingId] = useState<string | null>(null);
+
+  const syncRatingDrafts = useCallback((data: OrderResponse) => {
+    setRatingValues(() => {
+      const next: Record<string, number> = {};
+      (data.items || []).forEach((item) => {
+        next[item.id] = item.dishRating || 0;
+      });
+      return next;
+    });
+
+    setCommentValues(() => {
+      const next: Record<string, string> = {};
+      (data.items || []).forEach((item) => {
+        next[item.id] = item.dishRatingComment || '';
+      });
+      return next;
+    });
+  }, []);
 
   const loadOrderDetail = useCallback(async () => {
     if (!orderId) {
@@ -35,12 +56,13 @@ export default function OrderDetailScreen() {
     try {
       const data = await orderService.getOrderById(orderId);
       setOrder(data);
+      syncRatingDrafts(data);
     } catch (error) {
       console.error('Failed to load order detail:', error);
     } finally {
       setLoading(false);
     }
-  }, [orderId]);
+  }, [orderId, syncRatingDrafts]);
 
   useEffect(() => {
     loadOrderDetail();
@@ -69,6 +91,30 @@ export default function OrderDetailScreen() {
         },
       },
     ]);
+  };
+
+  const handleSubmitRating = async (item: OrderResponseItem) => {
+    const rating = ratingValues[item.id] || 0;
+    const comment = (commentValues[item.id] || '').trim();
+
+    if (!orderId || item.dishRating) return;
+
+    if (rating < 1 || rating > 5) {
+      Alert.alert('Thiếu đánh giá', 'Vui lòng chọn từ 1 đến 5 sao trước khi gửi.');
+      return;
+    }
+
+    try {
+      setSubmittingRatingId(item.id);
+      await orderService.submitDishRating(orderId, item.id, { rating, comment });
+      await loadOrderDetail();
+      Alert.alert('Thành công', 'Đánh giá món ăn đã được lưu.');
+    } catch (error: any) {
+      console.error('Failed to submit dish rating:', error);
+      Alert.alert('Lỗi', error?.message || 'Không thể gửi đánh giá lúc này.');
+    } finally {
+      setSubmittingRatingId(null);
+    }
   };
 
   const aggregatedIngredients = useMemo<AggregatedIngredient[]>(() => {
@@ -120,23 +166,54 @@ export default function OrderDetailScreen() {
 
   const getStatusColor = (status?: string) => {
     switch ((status || '').toLowerCase()) {
-      case 'pending': return '#F59E0B';
-      case 'processing': return '#3B82F6';
-      case 'completed': return '#10B981';
-      case 'canceled': return '#EF4444';
-      default: return '#6B7280';
+      case 'pending':
+        return '#F59E0B';
+      case 'processing':
+      case 'confirmed':
+        return '#3B82F6';
+      case 'completed':
+        return '#10B981';
+      case 'canceled':
+        return '#EF4444';
+      default:
+        return '#6B7280';
     }
   };
 
   const getStatusText = (status?: string) => {
     switch ((status || '').toLowerCase()) {
-      case 'pending': return 'Đang chờ';
-      case 'processing': return 'Đang xử lý';
-      case 'completed': return 'Hoàn thành';
-      case 'canceled': return 'Đã hủy';
-      default: return status || '--';
+      case 'pending':
+        return 'Đang chờ';
+      case 'processing':
+      case 'confirmed':
+        return 'Đang xử lý';
+      case 'completed':
+        return 'Hoàn thành';
+      case 'canceled':
+        return 'Đã hủy';
+      default:
+        return status || '--';
     }
   };
+
+  const renderStars = (item: OrderResponseItem, disabled: boolean) => (
+    <View style={styles.starsRow}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Pressable
+          key={star}
+          disabled={disabled}
+          onPress={() => setRatingValues((prev) => ({ ...prev, [item.id]: star }))}
+          style={styles.starButton}
+        >
+          <Ionicons
+            name={(ratingValues[item.id] || 0) >= star ? 'star' : 'star-outline'}
+            size={24}
+            color={(ratingValues[item.id] || 0) >= star ? '#F59E0B' : '#D1D5DB'}
+          />
+        </Pressable>
+      ))}
+    </View>
+  );
 
   if (loading) {
     return (
@@ -197,29 +274,80 @@ export default function OrderDetailScreen() {
 
         <View style={styles.card}>
           <ThemedText style={styles.sectionTitle}>Danh sách món đã chọn</ThemedText>
-          {(order.items || []).map((item) => (
-            <Pressable
-              key={item.id}
-              style={styles.linkRow}
-              onPress={() =>
-                router.push({
-                  pathname: '/order-recommendation-detail',
-                  params: {
-                    recipeId: item.recipeId,
-                    returnTo: 'order-detail',
-                    orderId: order.id,
-                  },
-                })
-              }
-            >
-              <View style={{ flex: 1 }}>
-                <ThemedText style={styles.linkTitle}>{item.recipeName}</ThemedText>
-                <ThemedText style={styles.linkSub}>
-                  Khẩu phần x{item.servings} - {formatCurrency(item.lineTotal)}
-                </ThemedText>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-            </Pressable>
+          {(order.items || []).map((item, index) => (
+            <View key={item.id} style={[styles.itemBlock, index === order.items.length - 1 && styles.itemBlockLast]}>
+              <Pressable
+                style={styles.linkRow}
+                onPress={() =>
+                  router.push({
+                    pathname: '/order-recommendation-detail',
+                    params: {
+                      recipeId: item.recipeId,
+                      returnTo: 'order-detail',
+                      orderId: order.id,
+                    },
+                  })
+                }
+              >
+                <View style={styles.linkContent}>
+                  <ThemedText style={styles.linkTitle}>{item.recipeName}</ThemedText>
+                  <ThemedText style={styles.linkSub}>
+                    Khẩu phần x{item.servings} - {formatCurrency(item.lineTotal)}
+                  </ThemedText>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+              </Pressable>
+
+              {order.status?.toLowerCase() === 'completed' ? (
+                <View style={styles.ratingCard}>
+                  <View style={styles.ratingHeader}>
+                    <ThemedText style={styles.ratingTitle}>Đánh giá món ăn</ThemedText>
+                    {item.dishRating ? (
+                      <View style={styles.ratedBadge}>
+                        <ThemedText style={styles.ratedBadgeText}>Đã lưu</ThemedText>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {renderStars(item, submittingRatingId === item.id || !!item.dishRating)}
+
+                  {item.dishRating ? (
+                    <View style={styles.savedCommentBox}>
+                      <ThemedText style={styles.savedCommentText}>
+                        {item.dishRatingComment || 'Bạn đã gửi đánh giá cho món này.'}
+                      </ThemedText>
+                    </View>
+                  ) : (
+                    <TextInput
+                      value={commentValues[item.id] || ''}
+                      editable={submittingRatingId !== item.id}
+                      onChangeText={(value) => setCommentValues((prev) => ({ ...prev, [item.id]: value }))}
+                      placeholder="Chia sẻ cảm nhận về món ăn này"
+                      placeholderTextColor="#9CA3AF"
+                      multiline
+                      textAlignVertical="top"
+                      style={styles.commentInput}
+                    />
+                  )}
+
+                  {item.dishRatedAt ? (
+                    <ThemedText style={styles.ratingMeta}>Đã đánh giá lúc: {formatDate(item.dishRatedAt)}</ThemedText>
+                  ) : null}
+
+                  {!item.dishRating ? (
+                    <Pressable
+                      style={[styles.submitRatingBtn, submittingRatingId === item.id && styles.submitRatingBtnDisabled]}
+                      disabled={submittingRatingId === item.id}
+                      onPress={() => handleSubmitRating(item)}
+                    >
+                      <ThemedText style={styles.submitRatingBtnText}>
+                        {submittingRatingId === item.id ? 'Đang gửi...' : 'Gửi đánh giá'}
+                      </ThemedText>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
           ))}
           {(!order.items || order.items.length === 0) && (
             <ThemedText style={styles.emptyHint}>Không có món nào trong đơn.</ThemedText>
@@ -230,7 +358,7 @@ export default function OrderDetailScreen() {
           <ThemedText style={styles.sectionTitle}>Nguyên liệu đã xác nhận mua</ThemedText>
           {aggregatedIngredients.map((ing) => (
             <View key={ing.key} style={styles.ingRow}>
-              <View style={{ flex: 1 }}>
+              <View style={styles.linkContent}>
                 <ThemedText style={styles.ingName}>{ing.ingredientName}</ThemedText>
                 <ThemedText style={styles.ingQty}>
                   {ing.quantityBase} {ing.baseUnit}
@@ -354,13 +482,25 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 2,
   },
+  itemBlock: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    paddingBottom: 14,
+    marginBottom: 4,
+  },
+  itemBlockLast: {
+    borderBottomWidth: 0,
+    paddingBottom: 0,
+    marginBottom: 0,
+  },
   linkRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+  },
+  linkContent: {
+    flex: 1,
   },
   linkTitle: {
     fontSize: 14,
@@ -371,6 +511,89 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     marginTop: 2,
+  },
+  ratingCard: {
+    marginTop: 8,
+    borderRadius: 12,
+    backgroundColor: '#FAFAF9',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 12,
+    gap: 10,
+  },
+  ratingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  ratingTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  ratedBadge: {
+    backgroundColor: '#DCFCE7',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  ratedBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  starsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  starButton: {
+    paddingVertical: 2,
+    paddingRight: 4,
+  },
+  commentInput: {
+    minHeight: 92,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#111827',
+  },
+  savedCommentBox: {
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  savedCommentText: {
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
+  },
+  ratingMeta: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  submitRatingBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: BRAND,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  submitRatingBtnDisabled: {
+    opacity: 0.7,
+  },
+  submitRatingBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   ingRow: {
     flexDirection: 'row',

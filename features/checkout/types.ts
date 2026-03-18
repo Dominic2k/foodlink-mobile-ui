@@ -36,6 +36,9 @@ export interface OrderResponseItem {
   servings: number;
   pricePerServingSnapshot: number;
   lineTotal: number;
+  dishRating?: number;
+  dishRatingComment?: string;
+  dishRatedAt?: string;
   ingredients: OrderIngredientResponse[];
 }
 
@@ -55,5 +58,21 @@ export interface OrderResponse {
   items: OrderResponseItem[];
 }
 
+export interface DishRatingRequest {
+  rating: number;
+  comment?: string;
+}
+
+export interface DishRatingResponse {
+  orderId: string;
+  orderItemId: string;
+  recipeId: string;
+  recipeName: string;
+  rating: number;
+  comment?: string;
+  ratedAt: string;
+}
+
 export type OrderApiResponse = BaseResponse<OrderResponse>;
 export type OrderListApiResponse = BaseResponse<PaginatedResponse<OrderResponse>>;
+export type DishRatingApiResponse = BaseResponse<DishRatingResponse>;
