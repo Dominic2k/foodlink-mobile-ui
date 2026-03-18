@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -9,6 +8,8 @@ import { ThemedView } from '@/shared/components/common/ThemedView';
 import { useRecommendationRefresh } from '@/features/recommendation/context/RecommendationRefreshContext';
 import { recommendationService } from '@/features/recommendation/services/recommendationService';
 import { RecommendationEvaluationStatus, RecommendationItem } from '@/features/recommendation/types';
+
+const REVIEW_PAGE_SIZE = 4;
 
 export default function RecommendationDetailScreen() {
   const { recipeId, returnTo, orderId } = useLocalSearchParams<{ recipeId?: string; returnTo?: string; orderId?: string }>();
@@ -19,6 +20,7 @@ export default function RecommendationDetailScreen() {
   const [expandedInstructions, setExpandedInstructions] = useState(false);
   const [servings, setServings] = useState(1);
   const [evaluationStatus, setEvaluationStatus] = useState<RecommendationEvaluationStatus>('idle');
+  const [visibleReviewCount, setVisibleReviewCount] = useState(REVIEW_PAGE_SIZE);
   const { needsRecommendationRefresh, clearRecommendationRefreshNeeded } = useRecommendationRefresh();
 
   const loadDetail = useCallback(async () => {
@@ -57,14 +59,17 @@ export default function RecommendationDetailScreen() {
                 return;
               }
             }
+
             if (returnTo === 'recommendation') {
               router.navigate('/recommendation');
               return;
             }
+
             if (router.canGoBack()) {
               router.back();
               return;
             }
+
             router.navigate('/recommendation');
           }}
           style={{ marginLeft: 15 }}
@@ -79,6 +84,10 @@ export default function RecommendationDetailScreen() {
     const base = item?.baseServings && item.baseServings > 0 ? item.baseServings : 1;
     setServings(base);
   }, [item?.recipeId, item?.baseServings]);
+
+  useEffect(() => {
+    setVisibleReviewCount(REVIEW_PAGE_SIZE);
+  }, [item?.recipeId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -139,6 +148,7 @@ export default function RecommendationDetailScreen() {
 
   const statusLabel = !item.evaluated ? 'Chưa đánh giá' : item.suitable ? 'Phù hợp' : 'Không phù hợp';
   const ingredients = item.ingredients ?? [];
+  const visibleReviews = (item.reviews ?? []).slice(0, visibleReviewCount);
 
   const fmt = (value?: number | null) => (typeof value === 'number' ? value.toFixed(2) : '--');
   const formatCurrency = (value?: number | null) => {
@@ -149,14 +159,18 @@ export default function RecommendationDetailScreen() {
       maximumFractionDigits: 0,
     }).format(value);
   };
-  
+  const formatRating = (value?: number | null) => {
+    if (typeof value !== 'number') return '--';
+    return value.toFixed(1);
+  };
   const formatCategoryLabel = (value: string) => {
     if (!value) return 'Khác';
     return value
       .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   };
+
   const baseServings = item.baseServings && item.baseServings > 0 ? item.baseServings : 1;
   const servingFactor = servings / baseServings;
   const selectedTotalPrice = item.ingredients && item.ingredients.length > 0
@@ -174,224 +188,263 @@ export default function RecommendationDetailScreen() {
           </View>
         )}
 
-      <ThemedView style={styles.card}>
-        <View style={styles.titleRow}>
-          <ThemedText style={styles.name}>{item.recipeName}</ThemedText>
-          <View 
-            style={[
-              styles.luxuryDetailBadge, 
-              { 
-                backgroundColor: item.evaluated ? (item.suitable ? '#ECFDF5' : '#FEF2F2') : '#F3F4F6',
-                borderColor: item.evaluated ? (item.suitable ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)') : '#D1D5DB'
-              }
-            ]}
-          >
-            <View style={styles.detailBadgeContent}>
-              {item.evaluated && (
-                <Ionicons 
-                  name={item.suitable ? "checkmark-circle" : "close-circle"} 
-                  size={14} 
-                  color={item.suitable ? '#065F46' : '#991B1B'} 
-                  style={{ marginRight: 4 }} 
-                />
-              )}
-              <ThemedText style={[styles.luxuryDetailBadgeText, { color: item.evaluated ? (item.suitable ? '#065F46' : '#991B1B') : '#6B7280' }]}>
+        <ThemedView style={styles.card}>
+          <View style={styles.titleRow}>
+            <ThemedText style={styles.name}>{item.recipeName}</ThemedText>
+            <View
+              style={[
+                styles.statusBadge,
+                item.evaluated
+                  ? (item.suitable ? styles.statusBadgeGood : styles.statusBadgeBad)
+                  : styles.statusBadgeIdle,
+              ]}
+            >
+              <ThemedText
+                style={[
+                  styles.statusBadgeText,
+                  item.evaluated
+                    ? (item.suitable ? styles.statusBadgeTextGood : styles.statusBadgeTextBad)
+                    : styles.statusBadgeTextIdle,
+                ]}
+              >
                 {statusLabel}
               </ThemedText>
             </View>
           </View>
-        </View>
 
-        {needsRecommendationRefresh && (evaluationStatus === 'queued' || evaluationStatus === 'processing') ? (
-          <View style={styles.refreshNotice}>
-            <Ionicons name="sync-outline" size={14} color="#8F4D44" />
-            <ThemedText style={styles.refreshNoticeText}>Đang chờ hệ thống đánh giá lại món ăn...</ThemedText>
-          </View>
-        ) : null}
-
-        <View style={styles.metaRow}>
-          <View 
-            style={[
-              styles.luxuryDetailScorePill,
-              {
-                backgroundColor: item.evaluated ? (item.score >= 80 ? '#F0FDF4' : item.score >= 60 ? '#FFFBEB' : '#FEF2F2') : '#F9FAFB',
-                borderColor: item.evaluated ? (item.score >= 80 ? 'rgba(34, 197, 94, 0.3)' : item.score >= 60 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(239, 68, 68, 0.3)') : 'rgba(0,0,0,0.05)'
-              }
-            ]}
-          >
-            <Ionicons 
-              name="flash" 
-              size={12} 
-              color={item.evaluated ? (item.score >= 80 ? '#059669' : item.score >= 60 ? '#D97706' : '#DC2626') : '#9CA3AF'} 
-              style={{ marginRight: 6 }} 
-            />
-            <ThemedText 
-              style={[
-                styles.luxuryDetailScoreText, 
-                { color: item.evaluated ? (item.score >= 80 ? '#059669' : item.score >= 60 ? '#D97706' : '#DC2626') : '#6B7280' }
-              ]}
-            >
-              {item.evaluated ? `Điểm số: ${item.score}/100` : '--/100'}
-            </ThemedText>
-          </View>
-        </View>
-
-        <View style={styles.categoriesRow}>
-          {item.dishCategories && item.dishCategories.map(cat => (
-            <View key={cat} style={styles.premiumDetailChip}>
-              <Ionicons name="restaurant-outline" size={12} color="#2C5C3F" />
-              <ThemedText style={styles.premiumDetailChipText}>{cat}</ThemedText>
-            </View>
-          ))}
-          {item.category && item.category !== 'other' ? (
-            <View style={[styles.premiumDetailChip, { backgroundColor: '#F8ECEA', borderColor: '#E8C7C2' }]}>
-              <Ionicons name="pricetag-outline" size={12} color="#8F4D44" />
-              <ThemedText style={[styles.premiumDetailChipText, { color: '#8F4D44' }]}>{formatCategoryLabel(item.category)}</ThemedText>
+          {needsRecommendationRefresh && (evaluationStatus === 'queued' || evaluationStatus === 'processing') ? (
+            <View style={styles.refreshNotice}>
+              <Ionicons name="sync-outline" size={14} color="#8F4D44" />
+              <ThemedText style={styles.refreshNoticeText}>Dang cho he thong danh gia lai mon an...</ThemedText>
             </View>
           ) : null}
-        </View>
 
-        <View style={styles.recipeInfoRow}>
-          <View style={styles.recipeInfoChip}>
-            <Ionicons name="time-outline" size={14} color="#8F4D44" />
-            <ThemedText style={styles.recipeInfoText}>Chuẩn bị {item.prepTimeMin ?? '--'} phút</ThemedText>
-          </View>
-          <View style={styles.recipeInfoChip}>
-            <Ionicons name="flame-outline" size={14} color="#8F4D44" />
-            <ThemedText style={styles.recipeInfoText}>Nấu {item.cookTimeMin ?? '--'} phút</ThemedText>
-          </View>
-          <View style={styles.recipeInfoChip}>
-            <Ionicons name="people-outline" size={14} color="#8F4D44" />
-            <ThemedText style={styles.recipeInfoText}>Khẩu phần {item.baseServings ?? '--'}</ThemedText>
-          </View>
-        </View>
-
-        <View style={styles.priceCard}>
-          <View style={styles.priceRow}>
-            <ThemedText style={styles.priceLabel}>Giá một khẩu phần</ThemedText>
-            <ThemedText style={styles.priceValue}>{formatCurrency(item.pricePerServing)}</ThemedText>
-          </View>
-          <View style={styles.priceRow}>
-            <ThemedText style={styles.priceLabel}>Khẩu phần muốn mua</ThemedText>
-            <View style={styles.servingStepper}>
-              <Pressable
-                style={[styles.stepperBtn, servings <= 1 && styles.stepperBtnDisabled]}
-                onPress={() => setServings(prev => Math.max(1, prev - 1))}
-                disabled={servings <= 1}
-              >
-                <Ionicons name="remove" size={16} color="#8F4D44" />
-              </Pressable>
-              <ThemedText style={styles.servingValue}>{servings}</ThemedText>
-              <Pressable style={styles.stepperBtn} onPress={() => setServings(prev => prev + 1)}>
-                <Ionicons name="add" size={16} color="#8F4D44" />
-              </Pressable>
+          <View style={styles.heroMetaRow}>
+            <View style={styles.scorePill}>
+              <Ionicons name="flash" size={12} color="#8F4D44" />
+              <ThemedText style={styles.scorePillText}>{item.evaluated ? `${item.score}/100` : '--/100'}</ThemedText>
             </View>
-          </View>
-          <ThemedText style={styles.servingHint}>Công thức gốc hiện tại dành cho {baseServings} khẩu phần.</ThemedText>
-          <View style={[styles.priceRow, styles.priceRowTotal]}>
-            <ThemedText style={styles.totalPriceLabel}>Tổng giá ước tính</ThemedText>
-            <ThemedText style={styles.totalPriceValue}>{formatCurrency(selectedTotalPrice)}</ThemedText>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Mô tả món</ThemedText>
-          <ThemedText style={styles.sectionText}>
-            {item.recipeDescription?.trim() || 'Món này chưa có mô tả.'}
-          </ThemedText>
-        </View>
-
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Lý do đánh giá</ThemedText>
-          <ThemedText style={styles.sectionText}>
-            {item.reason?.trim() || 'Món này chưa có lý do đánh giá.'}
-          </ThemedText>
-        </View>
-
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Đề xuất cách ăn</ThemedText>
-          <ThemedText style={styles.sectionText}>
-            {item.suggestion?.trim() || 'Món này chưa có đề xuất cách ăn.'}
-          </ThemedText>
-        </View>
-
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Hướng dẫn nấu</ThemedText>
-          <ThemedText
-            style={styles.sectionText}
-            numberOfLines={expandedInstructions ? undefined : 4}
-          >
-            {item.recipeInstructions?.trim() || 'Món này chưa có hướng dẫn nấu.'}
-          </ThemedText>
-          {item.recipeInstructions && item.recipeInstructions.trim().length > 0 && (
-            <Pressable
-              style={styles.expandBtn}
-              onPress={() => setExpandedInstructions(prev => !prev)}
-            >
-              <ThemedText style={styles.expandBtnText}>
-                {expandedInstructions ? 'Thu gọn' : 'Xem đầy đủ'}
-              </ThemedText>
+            <View style={styles.ratingSummaryCard}>
               <Ionicons
-                name={expandedInstructions ? 'chevron-up' : 'chevron-down'}
-                size={14}
-                color="#8F4D44"
+                name={item.ratingSummary?.totalRatings ? 'star' : 'star-outline'}
+                size={16}
+                color={item.ratingSummary?.totalRatings ? '#F59E0B' : '#9CA3AF'}
               />
-            </Pressable>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Tổng dinh dưỡng ước tính</ThemedText>
-          <View style={styles.nutritionGrid}>
-            <View style={styles.nutritionCell}>
-              <ThemedText style={styles.nutritionLabel}>Calo</ThemedText>
-              <ThemedText style={styles.nutritionValue}>{fmt(item.nutritionSummary?.calories)}</ThemedText>
-            </View>
-            <View style={styles.nutritionCell}>
-              <ThemedText style={styles.nutritionLabel}>Đạm (g)</ThemedText>
-              <ThemedText style={styles.nutritionValue}>{fmt(item.nutritionSummary?.protein)}</ThemedText>
-            </View>
-            <View style={styles.nutritionCell}>
-              <ThemedText style={styles.nutritionLabel}>Tinh bột (g)</ThemedText>
-              <ThemedText style={styles.nutritionValue}>{fmt(item.nutritionSummary?.carb)}</ThemedText>
-            </View>
-            <View style={styles.nutritionCell}>
-              <ThemedText style={styles.nutritionLabel}>Chất béo (g)</ThemedText>
-              <ThemedText style={styles.nutritionValue}>{fmt(item.nutritionSummary?.fat)}</ThemedText>
-            </View>
-          </View>
-          <ThemedText style={styles.coverageText}>
-            Đã tính được {item.nutritionSummary?.coveredIngredients ?? 0}/{item.nutritionSummary?.totalIngredients ?? 0} nguyên liệu
-          </ThemedText>
-        </View>
-
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Nguyên liệu</ThemedText>
-          {ingredients.length === 0 ? (
-            <ThemedText style={styles.sectionText}>Món này chưa có danh sách nguyên liệu.</ThemedText>
-          ) : (
-            ingredients.map((ingredient, index) => (
-              <View key={`${ingredient.ingredientId ?? ingredient.ingredientName}-${index}`} style={styles.ingredientRow}>
-                <View style={styles.ingredientTop}>
-                  <ThemedText style={styles.ingredientName}>
-                    {ingredient.ingredientName} {ingredient.optional ? '(tùy chọn)' : ''}
-                  </ThemedText>
-                  <ThemedText style={styles.ingredientQty}>
-                    {ingredient.quantity != null ? fmt(ingredient.quantity * servingFactor) : '--'} {ingredient.unit ?? ''}
-                  </ThemedText>
-                </View>
-                <ThemedText style={styles.ingredientPriceText}>
-                  {formatCurrency(ingredient.totalPrice != null ? ingredient.totalPrice * servingFactor : null)}
+              <View>
+                <ThemedText style={styles.ratingSummaryValue}>
+                  {item.ratingSummary?.totalRatings ? `${formatRating(item.ratingSummary?.averageRating)}/5` : 'Chưa có đánh giá'}
                 </ThemedText>
-                <ThemedText style={styles.ingredientNutrition}>
-                  Cal {fmt(ingredient.calories)} | P {fmt(ingredient.protein)} | C {fmt(ingredient.carb)} | F {fmt(ingredient.fat)}
+                <ThemedText style={styles.ratingSummaryMeta}>
+                  {item.ratingSummary?.totalRatings
+                    ? `${item.ratingSummary?.totalRatings} lượt đánh giá`
+                    : 'Món này chưa có đánh giá nào'}
                 </ThemedText>
               </View>
-            ))
-          )}
-        </View>
-      </ThemedView>
-    </ScrollView>
+            </View>
+          </View>
+
+          {item.myRating ? (
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionTitle}>Đánh giá của bạn</ThemedText>
+              <View style={styles.reviewCardMine}>
+                <View style={styles.reviewHeader}>
+                  <ThemedText style={styles.reviewAuthor}>Bạn</ThemedText>
+                  <View style={styles.reviewStars}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Ionicons
+                        key={star}
+                        name={star <= item.myRating!.rating ? 'star' : 'star-outline'}
+                        size={14}
+                        color="#F59E0B"
+                      />
+                    ))}
+                  </View>
+                </View>
+                <ThemedText style={styles.reviewMeta}>
+                  {item.myRating.ratedAt ? `Đã đánh giá lúc: ${new Date(item.myRating.ratedAt).toLocaleString('vi-VN')}` : ''}
+                </ThemedText>
+                <ThemedText style={styles.reviewComment}>{item.myRating.comment || 'Bạn chưa để lại bình luận.'}</ThemedText>
+              </View>
+            </View>
+          ) : null}
+
+          <View style={styles.categoriesRow}>
+            {item.dishCategories?.map((cat) => (
+              <View key={cat} style={styles.categoryChip}>
+                <ThemedText style={styles.categoryChipText}>{cat}</ThemedText>
+              </View>
+            ))}
+            {item.category && item.category !== 'other' ? (
+              <View style={[styles.categoryChip, styles.categoryChipAlt]}>
+                <ThemedText style={[styles.categoryChipText, styles.categoryChipAltText]}>{formatCategoryLabel(item.category)}</ThemedText>
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.infoChipRow}>
+            <View style={styles.infoChip}>
+              <Ionicons name="time-outline" size={14} color="#8F4D44" />
+              <ThemedText style={styles.infoChipText}>Chuẩn bị {item.prepTimeMin ?? '--'} phút</ThemedText>
+            </View>
+            <View style={styles.infoChip}>
+              <Ionicons name="flame-outline" size={14} color="#8F4D44" />
+              <ThemedText style={styles.infoChipText}>Nấu {item.cookTimeMin ?? '--'} phút</ThemedText>
+            </View>
+            <View style={styles.infoChip}>
+              <Ionicons name="people-outline" size={14} color="#8F4D44" />
+              <ThemedText style={styles.infoChipText}>Khẩu phần {item.baseServings ?? '--'}</ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.priceCard}>
+            <View style={styles.priceRow}>
+              <ThemedText style={styles.priceLabel}>Giá một khẩu phần</ThemedText>
+              <ThemedText style={styles.priceValue}>{formatCurrency(item.pricePerServing)}</ThemedText>
+            </View>
+            <View style={styles.priceRow}>
+              <ThemedText style={styles.priceLabel}>Khẩu phần muốn mua</ThemedText>
+              <View style={styles.servingStepper}>
+                <Pressable
+                  style={[styles.stepperBtn, servings <= 1 && styles.stepperBtnDisabled]}
+                  onPress={() => setServings((prev) => Math.max(1, prev - 1))}
+                  disabled={servings <= 1}
+                >
+                  <Ionicons name="remove" size={16} color="#8F4D44" />
+                </Pressable>
+                <ThemedText style={styles.servingValue}>{servings}</ThemedText>
+                <Pressable style={styles.stepperBtn} onPress={() => setServings((prev) => prev + 1)}>
+                  <Ionicons name="add" size={16} color="#8F4D44" />
+                </Pressable>
+              </View>
+            </View>
+            <ThemedText style={styles.servingHint}>Công thức gốc hiện tại dành cho {baseServings} khẩu phần.</ThemedText>
+            <View style={[styles.priceRow, styles.priceRowTotal]}>
+              <ThemedText style={styles.totalPriceLabel}>Tổng giá ước tính</ThemedText>
+              <ThemedText style={styles.totalPriceValue}>{formatCurrency(selectedTotalPrice)}</ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Mô tả món</ThemedText>
+            <ThemedText style={styles.sectionText}>{item.recipeDescription?.trim() || 'Món này chưa có mô tả.'}</ThemedText>
+          </View>
+
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Lý do đánh giá</ThemedText>
+            <ThemedText style={styles.sectionText}>{item.reason?.trim() || 'Món này chưa có lý do đánh giá.'}</ThemedText>
+          </View>
+
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Đề xuất cách ăn</ThemedText>
+            <ThemedText style={styles.sectionText}>{item.suggestion?.trim() || 'Món này chưa có đề xuất cách ăn.'}</ThemedText>
+          </View>
+
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Hướng dẫn nấu</ThemedText>
+            <ThemedText style={styles.sectionText} numberOfLines={expandedInstructions ? undefined : 4}>
+              {item.recipeInstructions?.trim() || 'Món này chưa có hướng dẫn nấu.'}
+            </ThemedText>
+            {item.recipeInstructions?.trim() ? (
+              <Pressable style={styles.expandBtn} onPress={() => setExpandedInstructions((prev) => !prev)}>
+                <ThemedText style={styles.expandBtnText}>{expandedInstructions ? 'Thu gọn' : 'Xem đầy đủ'}</ThemedText>
+                <Ionicons name={expandedInstructions ? 'chevron-up' : 'chevron-down'} size={14} color="#8F4D44" />
+              </Pressable>
+            ) : null}
+          </View>
+
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Tổng dinh dưỡng ước tính</ThemedText>
+            <View style={styles.nutritionGrid}>
+              <View style={styles.nutritionCell}>
+                <ThemedText style={styles.nutritionLabel}>Calo</ThemedText>
+                <ThemedText style={styles.nutritionValue}>{fmt(item.nutritionSummary?.calories)}</ThemedText>
+              </View>
+              <View style={styles.nutritionCell}>
+                <ThemedText style={styles.nutritionLabel}>Đạm (g)</ThemedText>
+                <ThemedText style={styles.nutritionValue}>{fmt(item.nutritionSummary?.protein)}</ThemedText>
+              </View>
+              <View style={styles.nutritionCell}>
+                <ThemedText style={styles.nutritionLabel}>Tinh bột (g)</ThemedText>
+                <ThemedText style={styles.nutritionValue}>{fmt(item.nutritionSummary?.carb)}</ThemedText>
+              </View>
+              <View style={styles.nutritionCell}>
+                <ThemedText style={styles.nutritionLabel}>Chất béo (g)</ThemedText>
+                <ThemedText style={styles.nutritionValue}>{fmt(item.nutritionSummary?.fat)}</ThemedText>
+              </View>
+            </View>
+            <ThemedText style={styles.coverageText}>
+              Đã tính được {item.nutritionSummary?.coveredIngredients ?? 0}/{item.nutritionSummary?.totalIngredients ?? 0} nguyên liệu
+            </ThemedText>
+          </View>
+
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Nguyên liệu</ThemedText>
+            {ingredients.length === 0 ? (
+              <ThemedText style={styles.sectionText}>Món này chưa có danh sách nguyên liệu.</ThemedText>
+            ) : (
+              ingredients.map((ingredient, index) => (
+                <View key={`${ingredient.ingredientId ?? ingredient.ingredientName}-${index}`} style={styles.ingredientRow}>
+                  <View style={styles.ingredientTop}>
+                    <ThemedText style={styles.ingredientName}>
+                      {ingredient.ingredientName} {ingredient.optional ? '(tùy chọn)' : ''}
+                    </ThemedText>
+                    <ThemedText style={styles.ingredientQty}>
+                      {ingredient.quantity != null ? fmt(ingredient.quantity * servingFactor) : '--'} {ingredient.unit ?? ''}
+                    </ThemedText>
+                  </View>
+                  <ThemedText style={styles.ingredientPriceText}>
+                    {formatCurrency(ingredient.totalPrice != null ? ingredient.totalPrice * servingFactor : null)}
+                  </ThemedText>
+                  <ThemedText style={styles.ingredientNutrition}>
+                    Cal {fmt(ingredient.calories)} | P {fmt(ingredient.protein)} | C {fmt(ingredient.carb)} | F {fmt(ingredient.fat)}
+                  </ThemedText>
+                </View>
+              ))
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Đánh giá từ người dùng</ThemedText>
+            {!item.reviews || item.reviews.length === 0 ? (
+              <ThemedText style={styles.sectionText}>Chưa có đánh giá.</ThemedText>
+            ) : (
+              <>
+                {visibleReviews.map((review, index) => (
+                  <View key={`${review.userId}-${index}`} style={styles.reviewCard}>
+                    <View style={styles.reviewHeader}>
+                      <ThemedText style={styles.reviewAuthor}>{review.mine ? 'Bạn' : review.userFullName}</ThemedText>
+                      <View style={styles.reviewStars}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Ionicons
+                            key={star}
+                            name={star <= review.rating ? 'star' : 'star-outline'}
+                            size={14}
+                            color="#F59E0B"
+                          />
+                        ))}
+                      </View>
+                    </View>
+                    <ThemedText style={styles.reviewMeta}>
+                      {review.ratedAt ? new Date(review.ratedAt).toLocaleString('vi-VN') : ''}
+                    </ThemedText>
+                    <ThemedText style={styles.reviewComment}>{review.comment || 'Người dùng không để lại bình luận.'}</ThemedText>
+                  </View>
+                ))}
+
+                {item.reviews.length > visibleReviewCount ? (
+                  <Pressable style={styles.loadMoreReviewsBtn} onPress={() => setVisibleReviewCount((prev) => prev + REVIEW_PAGE_SIZE)}>
+                    <ThemedText style={styles.loadMoreReviewsText}>
+                      Xem thêm {Math.min(REVIEW_PAGE_SIZE, item.reviews.length - visibleReviewCount)} đánh giá
+                    </ThemedText>
+                    <Ionicons name="chevron-down" size={14} color="#8F4D44" />
+                  </Pressable>
+                ) : null}
+              </>
+            )}
+          </View>
+        </ThemedView>
+      </ScrollView>
+
       <View style={styles.bottomFixedBar}>
         <Pressable
           style={styles.buyButton}
@@ -399,7 +452,7 @@ export default function RecommendationDetailScreen() {
             if (item.recipeId) {
               router.push({
                 pathname: '/checkout',
-                params: { recipeId: item.recipeId, servings: String(servings) }
+                params: { recipeId: item.recipeId, servings: String(servings) },
               });
             }
           }}
@@ -413,348 +466,79 @@ export default function RecommendationDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F7F7',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 14,
-    paddingBottom: 24,
-    gap: 12,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: '#F7F7F7',
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  heroImage: {
-    width: '100%',
-    height: 220,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  heroFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F8ECEA',
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#F0D9D5',
-    padding: 14,
-    gap: 12,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-  },
-  name: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1F2937',
-  },
-  refreshNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: '#FFF7F5',
-    borderWidth: 1,
-    borderColor: '#E8C7C2',
-  },
-  refreshNoticeText: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#8F4D44',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  categoriesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  luxuryDetailBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  detailBadgeContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  luxuryDetailBadgeText: {
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  luxuryDetailScorePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginTop: 4,
-    borderWidth: 1,
-  },
-  luxuryDetailScoreText: {
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  premiumDetailChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 5,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginTop: 4,
-  },
-  premiumDetailChipText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#4B5563',
-  },
-  recipeInfoRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  recipeInfoChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderWidth: 1,
-    borderColor: '#E8C7C2',
-    backgroundColor: '#FFF7F5',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  recipeInfoText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#8F4D44',
-  },
-  priceCard: {
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#F0D9D5',
-    borderRadius: 14,
-    backgroundColor: '#FFFDFC',
-    padding: 14,
-    shadowColor: '#A75A50',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  priceRowTotal: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderStyle: 'dashed',
-    borderTopColor: '#E8C7C2',
-  },
-  priceLabel: {
-    fontSize: 13,
-    color: '#8F4D44',
-    fontWeight: '600',
-  },
-  priceValue: {
-    fontSize: 18,
-    color: '#7E3F38',
-    fontWeight: '800',
-  },
-  servingStepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  stepperBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#C1766B',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperBtnDisabled: {
-    opacity: 0.4,
-  },
-  servingValue: {
-    minWidth: 28,
-    textAlign: 'center',
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#1F2937',
-  },
-  servingHint: {
-    fontSize: 12,
-    color: '#828282',
-    fontStyle: 'italic',
-  },
-  totalPriceLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  totalPriceValue: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#C1766B',
-  },
-  expandBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 4,
-    marginTop: 6,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-    backgroundColor: '#F8ECEA',
-  },
-  expandBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#8F4D44',
-  },
-  section: {
-    gap: 8,
-    marginTop: 8,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1F2937',
-    borderLeftWidth: 4,
-    borderLeftColor: '#C1766B',
-    paddingLeft: 10,
-  },
-  sectionText: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#4B5563',
-  },
-  nutritionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  nutritionCell: {
-    width: '48%',
-    borderWidth: 1,
-    borderColor: '#F0D9D5',
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: '#FFFFFF',
-  },
-  nutritionLabel: {
-    fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  nutritionValue: {
-    marginTop: 4,
-    fontSize: 18,
-    color: '#1F2937',
-    fontWeight: '800',
-  },
-  coverageText: {
-    marginTop: 6,
-    fontSize: 12,
-    color: '#6B7280',
-    fontStyle: 'italic',
-  },
-  ingredientRow: {
-    borderWidth: 1,
-    borderColor: '#F0D9D5',
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    padding: 12,
-    gap: 6,
-    marginBottom: 8,
-  },
-  ingredientTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  ingredientName: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  ingredientQty: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#C1766B',
-  },
-  ingredientNutrition: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  ingredientPriceText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#8F4D44',
-  },
-  bottomFixedBar: {
-    padding: 16,
-    paddingBottom: 32,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F0D9D5',
-  },
-  buyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#C1766B',
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  buyButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  container: { flex: 1, backgroundColor: '#F7F7F7' },
+  scrollView: { flex: 1 },
+  contentContainer: { padding: 14, paddingBottom: 24, gap: 12 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#F7F7F7' },
+  emptyTitle: { fontSize: 16, fontWeight: '700' },
+  heroImage: { width: '100%', height: 220, borderRadius: 16, backgroundColor: '#FFFFFF' },
+  heroFallback: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8ECEA' },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#F0D9D5', padding: 14, gap: 12 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  name: { fontSize: 22, fontWeight: '800', color: '#1F2937', flex: 1 },
+  statusBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, borderWidth: 1 },
+  statusBadgeGood: { backgroundColor: '#ECFDF5', borderColor: 'rgba(16, 185, 129, 0.4)' },
+  statusBadgeBad: { backgroundColor: '#FEF2F2', borderColor: 'rgba(239, 68, 68, 0.4)' },
+  statusBadgeIdle: { backgroundColor: '#F3F4F6', borderColor: '#D1D5DB' },
+  statusBadgeText: { fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
+  statusBadgeTextGood: { color: '#065F46' },
+  statusBadgeTextBad: { color: '#991B1B' },
+  statusBadgeTextIdle: { color: '#6B7280' },
+  refreshNotice: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, backgroundColor: '#FFF7F5', borderWidth: 1, borderColor: '#E8C7C2' },
+  refreshNoticeText: { flex: 1, fontSize: 12, fontWeight: '600', color: '#8F4D44' },
+  heroMetaRow: { flexDirection: 'row', gap: 10, alignItems: 'stretch' },
+  scorePill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: '#F8ECEA', borderWidth: 1, borderColor: '#E8C7C2' },
+  scorePillText: { fontSize: 13, fontWeight: '800', color: '#8F4D44' },
+  ratingSummaryCard: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: '#F0D9D5', borderRadius: 14, backgroundColor: '#FFFDFC', padding: 14 },
+  ratingSummaryLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  ratingSummaryValue: { fontSize: 18, fontWeight: '800', color: '#1F2937' },
+  ratingSummaryMeta: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  categoriesRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
+  categoryChip: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: '#E2F1E7', borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
+  categoryChipText: { fontSize: 11, fontWeight: '700', color: '#2C5C3F' },
+  categoryChipAlt: { backgroundColor: '#F8ECEA', borderColor: '#E8C7C2' },
+  categoryChipAltText: { color: '#8F4D44' },
+  infoChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  infoChip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: '#E8C7C2', backgroundColor: '#FFF7F5', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  infoChipText: { fontSize: 12, fontWeight: '700', color: '#8F4D44' },
+  priceCard: { gap: 12, borderWidth: 1, borderColor: '#F0D9D5', borderRadius: 14, backgroundColor: '#FFFDFC', padding: 14, shadowColor: '#A75A50', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  priceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  priceRowTotal: { paddingTop: 12, borderTopWidth: 1, borderStyle: 'dashed', borderTopColor: '#E8C7C2' },
+  priceLabel: { fontSize: 13, color: '#8F4D44', fontWeight: '600' },
+  priceValue: { fontSize: 18, color: '#7E3F38', fontWeight: '800' },
+  servingStepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  stepperBtn: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, borderColor: '#C1766B', backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  stepperBtnDisabled: { opacity: 0.4 },
+  servingValue: { minWidth: 28, textAlign: 'center', fontSize: 17, fontWeight: '800', color: '#1F2937' },
+  servingHint: { fontSize: 12, color: '#828282', fontStyle: 'italic' },
+  totalPriceLabel: { fontSize: 15, fontWeight: '700', color: '#1F2937' },
+  totalPriceValue: { fontSize: 22, fontWeight: '900', color: '#C1766B' },
+  expandBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, marginTop: 6, paddingVertical: 5, paddingHorizontal: 10, borderRadius: 20, backgroundColor: '#F8ECEA' },
+  expandBtnText: { fontSize: 12, fontWeight: '700', color: '#8F4D44' },
+  section: { gap: 8, marginTop: 8 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#1F2937', borderLeftWidth: 4, borderLeftColor: '#C1766B', paddingLeft: 10 },
+  sectionText: { fontSize: 14, lineHeight: 22, color: '#4B5563' },
+  nutritionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  nutritionCell: { width: '48%', borderWidth: 1, borderColor: '#F0D9D5', borderRadius: 12, padding: 12, backgroundColor: '#FFFFFF' },
+  nutritionLabel: { fontSize: 11, color: '#6B7280', fontWeight: '600', textTransform: 'uppercase' },
+  nutritionValue: { marginTop: 4, fontSize: 18, color: '#1F2937', fontWeight: '800' },
+  coverageText: { marginTop: 6, fontSize: 12, color: '#6B7280', fontStyle: 'italic' },
+  ingredientRow: { borderWidth: 1, borderColor: '#F0D9D5', borderRadius: 12, backgroundColor: '#FFFFFF', padding: 12, gap: 6, marginBottom: 8 },
+  ingredientTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  ingredientName: { flex: 1, fontSize: 14, fontWeight: '700', color: '#1F2937' },
+  ingredientQty: { fontSize: 13, fontWeight: '700', color: '#C1766B' },
+  ingredientNutrition: { fontSize: 12, color: '#6B7280' },
+  ingredientPriceText: { fontSize: 13, fontWeight: '700', color: '#8F4D44' },
+  reviewCard: { borderWidth: 1, borderColor: '#F0D9D5', borderRadius: 12, backgroundColor: '#FFFFFF', padding: 12, gap: 6, marginBottom: 8 },
+  reviewCardMine: { borderWidth: 1, borderColor: '#E8C7C2', borderRadius: 12, backgroundColor: '#FFF7F5', padding: 12, gap: 6 },
+  reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  reviewAuthor: { fontSize: 14, fontWeight: '700', color: '#1F2937' },
+  reviewStars: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  reviewMeta: { fontSize: 12, color: '#6B7280' },
+  reviewComment: { fontSize: 14, lineHeight: 21, color: '#4B5563' },
+  loadMoreReviewsBtn: { marginTop: 4, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: '#FFF7F5', borderWidth: 1, borderColor: '#E8C7C2' },
+  loadMoreReviewsText: { fontSize: 12, fontWeight: '700', color: '#8F4D44' },
+  bottomFixedBar: { padding: 16, paddingBottom: 32, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#F0D9D5' },
+  buyButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#C1766B', paddingVertical: 14, borderRadius: 12 },
+  buyButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });
