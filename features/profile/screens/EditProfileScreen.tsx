@@ -10,9 +10,11 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { userService } from '@/features/profile/services/userService';
 
 const BRAND = '#C1766B';
@@ -29,6 +31,26 @@ export default function EditProfileScreen() {
   const [phone, setPhone] = useState(params.phone || '');
   const [address, setAddress] = useState(params.address || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Quyền bị từ chối', 'Ứng dụng cần quyền truy cập thư viện ảnh để đổi ảnh đại diện.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setAvatarUri(result.assets[0].uri);
+    }
+  };
 
   const handleSave = async () => {
     if (!fullName.trim()) {
@@ -38,11 +60,18 @@ export default function EditProfileScreen() {
 
     try {
       setIsSaving(true);
+
+      let uploadedAvatarUrl = params.avatarUrl;
+      if (avatarUri) {
+        const uploadResult = await userService.uploadAvatar(avatarUri);
+        uploadedAvatarUrl = uploadResult.data;
+      }
+
       await userService.updateProfile({
         fullName: fullName.trim(),
         phone: phone.trim() || undefined,
         address: address.trim() || undefined,
-        avatarUrl: params.avatarUrl || undefined,
+        avatarUrl: uploadedAvatarUrl || undefined,
       });
       Alert.alert('Thành công', 'Hồ sơ đã được cập nhật', [
         { text: 'OK', onPress: () => router.back() },
@@ -75,13 +104,22 @@ export default function EditProfileScreen() {
         >
           {/* Avatar */}
           <View style={styles.avatarSection}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarInitials}>
-                {fullName
-                  ? fullName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
-                  : '?'}
-              </Text>
-            </View>
+            <TouchableOpacity activeOpacity={0.8} onPress={handlePickImage}>
+              <View style={styles.avatarCircle}>
+                {(avatarUri || params.avatarUrl) ? (
+                  <Image source={{ uri: avatarUri || params.avatarUrl }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarInitials}>
+                    {fullName
+                      ? fullName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+                      : '?'}
+                  </Text>
+                )}
+              </View>
+              <View style={styles.editBadge}>
+                <Ionicons name="camera" size={14} color="#FFF" />
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* Form */}
@@ -202,6 +240,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: -4,
+    backgroundColor: '#333',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFF',
   },
   avatarInitials: {
     fontSize: 28,

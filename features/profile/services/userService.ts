@@ -13,4 +13,17 @@ export const userService = {
   async updateProfile(data: UpdateProfileRequest): Promise<UserProfileApiResponse> {
     return api.put<UserProfileApiResponse>('/users/me', data);
   },
+
+  async uploadAvatar(imageUri: string, mimeType: string = 'image/jpeg', name: string = 'avatar.jpg'): Promise<{ data: string, message: string }> {
+    const formData = new FormData();
+    formData.append('file', {
+      uri: imageUri,
+      type: mimeType,
+      name: name,
+    } as any);
+
+    return api.post<{ data: string, message: string }>('/users/me/avatar', formData, {
+      'Content-Type': 'multipart/form-data',
+    });
+  },
 };

@@ -29,10 +29,14 @@ class ApiClient {
   }
 
   private async request<T>(endpoint: string, config: RequestConfig): Promise<T> {
+    const isFormData = config.body instanceof FormData;
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       ...config.headers,
     };
+
+    if (!isFormData && !headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
@@ -46,7 +50,7 @@ class ApiClient {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         method: config.method,
         headers,
-        body: config.body ? JSON.stringify(config.body) : undefined,
+        body: isFormData ? (config.body as any) : (config.body ? JSON.stringify(config.body) : undefined),
         signal: controller.signal,
       });
 
@@ -54,7 +58,8 @@ class ApiClient {
 
       if (!response.ok) {
         const responseText = await response.text();
-        console.error(`[API ERROR] ${config.method} ${endpoint} -> ${response.status}: ${responseText}`);
+        console.log(`[API ERROR] ${config.method} ${endpoint} -> ${response.status}: ${responseText}`);
+
         let errorMessage = `HTTP ${response.status}`;
         try {
           const errorData = JSON.parse(responseText);
@@ -69,7 +74,7 @@ class ApiClient {
     } catch (error: any) {
       clearTimeout(timeoutId);
       if (error.name === 'AbortError') {
-        console.error(`[API TIMEOUT] ${config.method} ${endpoint} timed out after ${REQUEST_TIMEOUT_MS}ms`);
+        console.log(`[API TIMEOUT] ${config.method} ${endpoint} timed out after ${REQUEST_TIMEOUT_MS}ms`);
         throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
       }
       throw error;
@@ -80,8 +85,8 @@ class ApiClient {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
-  async post<T>(endpoint: string, data: unknown): Promise<T> {
-    return this.request<T>(endpoint, { method: 'POST', body: data });
+  async post<T>(endpoint: string, data?: unknown, headers?: Record<string, string>): Promise<T> {
+    return this.request<T>(endpoint, { method: 'POST', body: data, headers });
   }
 
   async put<T>(endpoint: string, data: unknown): Promise<T> {

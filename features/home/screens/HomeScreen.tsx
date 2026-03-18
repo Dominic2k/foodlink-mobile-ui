@@ -35,19 +35,19 @@ const HERO_DATA = [
     id: '1',
     title: 'Bữa ăn lành mạnh cho cả tuần',
     subtitle: 'Khám phá công thức giúp bạn tràn đầy năng lượng',
-    image: require('@/assets/images/home/hero_salad.png'),
+    image: { uri: 'https://res.cloudinary.com/dx5f9qzgi/image/upload/v1773819982/hero_salad_swtplp.png' },
   },
   {
     id: '2',
     title: 'Hương vị truyền thống Việt Nam',
     subtitle: 'Thưởng thức bát Phở bò nóng hổi chuẩn vị',
-    image: require('@/assets/images/home/featured_pho.png'),
+    image: { uri: 'https://res.cloudinary.com/dx5f9qzgi/image/upload/v1773819981/featured_pho_hb8k7n.png' },
   },
   {
     id: '3',
     title: 'Trái cây nhiệt đới tươi mới',
     subtitle: 'Cung cấp vitamin tự nhiên cho làn da sáng mịn',
-    image: require('@/assets/images/home/health_tip_fruit.png'),
+    image: { uri: 'https://res.cloudinary.com/dx5f9qzgi/image/upload/v1773819982/health_tip_fruit_epar4o.png' },
   },
 ];
 
@@ -65,14 +65,14 @@ const FEATURED_RECIPES = [
     name: 'Salad gà bơ Quinoa',
     time: '20 phút',
     calories: '450 kcal',
-    image: require('@/assets/images/home/hero_salad.png'),
+    image: { uri: 'https://res.cloudinary.com/dx5f9qzgi/image/upload/v1773819982/hero_salad_swtplp.png' },
   },
   {
     id: '2',
     name: 'Phở Bò Gia Truyền',
     time: '45 phút',
     calories: '600 kcal',
-    image: require('@/assets/images/home/featured_pho.png'),
+    image: { uri: 'https://res.cloudinary.com/dx5f9qzgi/image/upload/v1773819981/featured_pho_hb8k7n.png' },
   },
 ];
 
@@ -230,7 +230,7 @@ export default function HomeScreen() {
       {/* Health Tip Section */}
       <Animated.View entering={FadeInDown.delay(1000).duration(800)} style={styles.healthTipCard}>
         <ImageBackground 
-          source={require('@/assets/images/home/health_tip_fruit.png')} 
+          source={{ uri: 'https://res.cloudinary.com/dx5f9qzgi/image/upload/v1773819982/health_tip_fruit_epar4o.png' }} 
           style={styles.healthTipBg}
           imageStyle={{ borderRadius: 20 }}
         >
