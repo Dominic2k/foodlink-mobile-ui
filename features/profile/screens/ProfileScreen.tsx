@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, ScrollView, View, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { StyleSheet, ScrollView, View, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 
@@ -95,7 +95,7 @@ export default function ProfileScreen() {
         <View style={styles.avatarSection}>
           <View style={styles.avatarCircle}>
             {profile?.avatarUrl ? (
-              <ThemedText style={styles.avatarInitials}>{initials}</ThemedText>
+              <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
             ) : (
               <ThemedText style={styles.avatarInitials}>{initials}</ThemedText>
             )}
@@ -242,6 +242,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarInitials: {
     fontSize: 32,
