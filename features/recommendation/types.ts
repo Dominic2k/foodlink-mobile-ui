@@ -21,8 +21,25 @@ export interface RecommendationItem {
   suitable: boolean;
   reason?: string | null;
   suggestion?: string | null;
+  ratingSummary?: RecommendationRatingSummary | null;
+  myRating?: RecommendationReview | null;
+  reviews?: RecommendationReview[] | null;
   ingredients?: RecommendationIngredientDetail[] | null;
   nutritionSummary?: RecommendationNutritionSummary | null;
+}
+
+export interface RecommendationRatingSummary {
+  averageRating?: number | null;
+  totalRatings?: number;
+}
+
+export interface RecommendationReview {
+  userId: string;
+  userFullName: string;
+  rating: number;
+  comment?: string | null;
+  ratedAt?: string | null;
+  mine?: boolean;
 }
 
 export interface RecommendationIngredientDetail {
