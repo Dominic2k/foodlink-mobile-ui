@@ -28,6 +28,7 @@ export default function OrderDetailScreen() {
   const [ratingValues, setRatingValues] = useState<Record<string, number>>({});
   const [commentValues, setCommentValues] = useState<Record<string, string>>({});
   const [submittingRatingId, setSubmittingRatingId] = useState<string | null>(null);
+  const [deletingRatingId, setDeletingRatingId] = useState<string | null>(null);
 
   const syncRatingDrafts = useCallback((data: OrderResponse) => {
     setRatingValues(() => {
@@ -115,6 +116,31 @@ export default function OrderDetailScreen() {
     } finally {
       setSubmittingRatingId(null);
     }
+  };
+
+  const handleDeleteRating = (item: OrderResponseItem) => {
+    if (!orderId || !item.dishRating) return;
+
+    Alert.alert('Xóa đánh giá', 'Bạn có chắc muốn xóa đánh giá của món ăn này không?', [
+      { text: 'Không', style: 'cancel' },
+      {
+        text: 'Xóa',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setDeletingRatingId(item.id);
+            await orderService.deleteDishRating(orderId, item.id);
+            await loadOrderDetail();
+            Alert.alert('Thành công', 'Đánh giá món ăn đã được xóa.');
+          } catch (error: any) {
+            console.error('Failed to delete dish rating:', error);
+            Alert.alert('Lỗi', error?.message || 'Không thể xóa đánh giá lúc này.');
+          } finally {
+            setDeletingRatingId(null);
+          }
+        },
+      },
+    ]);
   };
 
   const aggregatedIngredients = useMemo<AggregatedIngredient[]>(() => {
@@ -309,11 +335,11 @@ export default function OrderDetailScreen() {
                     ) : null}
                   </View>
 
-                  {renderStars(item, submittingRatingId === item.id)}
+                  {renderStars(item, submittingRatingId === item.id || deletingRatingId === item.id)}
 
                   <TextInput
                     value={commentValues[item.id] || ''}
-                    editable={submittingRatingId !== item.id}
+                    editable={submittingRatingId !== item.id && deletingRatingId !== item.id}
                     onChangeText={(value) => setCommentValues((prev) => ({ ...prev, [item.id]: value }))}
                     placeholder="Chia sẻ cảm nhận về món ăn này"
                     placeholderTextColor="#9CA3AF"
@@ -326,17 +352,31 @@ export default function OrderDetailScreen() {
                     <ThemedText style={styles.ratingMeta}>Đã đánh giá lúc: {formatDate(item.dishRatedAt)}</ThemedText>
                   ) : null}
 
-                  <Pressable
-                    style={[styles.submitRatingBtn, submittingRatingId === item.id && styles.submitRatingBtnDisabled]}
-                    disabled={submittingRatingId === item.id}
-                    onPress={() => handleSubmitRating(item)}
-                  >
-                    <ThemedText style={styles.submitRatingBtnText}>
-                      {submittingRatingId === item.id
-                        ? (item.dishRating ? 'Đang cập nhật...' : 'Đang gửi...')
-                        : (item.dishRating ? 'Cập nhật đánh giá' : 'Gửi đánh giá')}
-                    </ThemedText>
-                  </Pressable>
+                  <View style={styles.ratingActions}>
+                    <Pressable
+                      style={[styles.submitRatingBtn, (submittingRatingId === item.id || deletingRatingId === item.id) && styles.submitRatingBtnDisabled]}
+                      disabled={submittingRatingId === item.id || deletingRatingId === item.id}
+                      onPress={() => handleSubmitRating(item)}
+                    >
+                      <ThemedText style={styles.submitRatingBtnText}>
+                        {submittingRatingId === item.id
+                          ? (item.dishRating ? 'Đang cập nhật...' : 'Đang gửi...')
+                          : (item.dishRating ? 'Cập nhật đánh giá' : 'Gửi đánh giá')}
+                      </ThemedText>
+                    </Pressable>
+
+                    {item.dishRating ? (
+                      <Pressable
+                        style={[styles.deleteRatingBtn, deletingRatingId === item.id && styles.submitRatingBtnDisabled]}
+                        disabled={submittingRatingId === item.id || deletingRatingId === item.id}
+                        onPress={() => handleDeleteRating(item)}
+                      >
+                        <ThemedText style={styles.deleteRatingBtnText}>
+                          {deletingRatingId === item.id ? 'Đang xóa...' : 'Xóa đánh giá'}
+                        </ThemedText>
+                      </Pressable>
+                    ) : null}
+                  </View>
                 </View>
               ) : null}
             </View>
@@ -571,6 +611,26 @@ const styles = StyleSheet.create({
   },
   submitRatingBtnText: {
     color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  ratingActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    alignItems: 'center',
+  },
+  deleteRatingBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  deleteRatingBtnText: {
+    color: '#B91C1C',
     fontSize: 13,
     fontWeight: '700',
   },

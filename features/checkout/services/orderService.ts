@@ -22,4 +22,7 @@ export const orderService = {
     const response = await api.put<DishRatingApiResponse>(`/api/v1/orders/${orderId}/items/${orderItemId}/rating`, request);
     return response.data;
   },
+  deleteDishRating: async (orderId: string, orderItemId: string): Promise<void> => {
+    await api.delete(`/api/v1/orders/${orderId}/items/${orderItemId}/rating`);
+  },
 };
