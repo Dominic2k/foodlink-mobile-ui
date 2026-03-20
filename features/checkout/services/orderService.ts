@@ -19,7 +19,7 @@ export const orderService = {
     return response.data;
   },
   submitDishRating: async (orderId: string, orderItemId: string, request: DishRatingRequest): Promise<DishRatingApiResponse['data']> => {
-    const response = await api.post<DishRatingApiResponse>(`/api/v1/orders/${orderId}/items/${orderItemId}/rating`, request);
+    const response = await api.put<DishRatingApiResponse>(`/api/v1/orders/${orderId}/items/${orderItemId}/rating`, request);
     return response.data;
   },
 };
