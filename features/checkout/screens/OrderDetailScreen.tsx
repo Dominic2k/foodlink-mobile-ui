@@ -97,7 +97,7 @@ export default function OrderDetailScreen() {
     const rating = ratingValues[item.id] || 0;
     const comment = (commentValues[item.id] || '').trim();
 
-    if (!orderId || item.dishRating) return;
+    if (!orderId) return;
 
     if (rating < 1 || rating > 5) {
       Alert.alert('Thiếu đánh giá', 'Vui lòng chọn từ 1 đến 5 sao trước khi gửi.');
@@ -108,7 +108,7 @@ export default function OrderDetailScreen() {
       setSubmittingRatingId(item.id);
       await orderService.submitDishRating(orderId, item.id, { rating, comment });
       await loadOrderDetail();
-      Alert.alert('Thành công', 'Đánh giá món ăn đã được lưu.');
+      Alert.alert('Thành công', item.dishRating ? 'Đánh giá món ăn đã được cập nhật.' : 'Đánh giá món ăn đã được lưu.');
     } catch (error: any) {
       console.error('Failed to submit dish rating:', error);
       Alert.alert('Lỗi', error?.message || 'Không thể gửi đánh giá lúc này.');
@@ -309,42 +309,34 @@ export default function OrderDetailScreen() {
                     ) : null}
                   </View>
 
-                  {renderStars(item, submittingRatingId === item.id || !!item.dishRating)}
+                  {renderStars(item, submittingRatingId === item.id)}
 
-                  {item.dishRating ? (
-                    <View style={styles.savedCommentBox}>
-                      <ThemedText style={styles.savedCommentText}>
-                        {item.dishRatingComment || 'Bạn đã gửi đánh giá cho món này.'}
-                      </ThemedText>
-                    </View>
-                  ) : (
-                    <TextInput
-                      value={commentValues[item.id] || ''}
-                      editable={submittingRatingId !== item.id}
-                      onChangeText={(value) => setCommentValues((prev) => ({ ...prev, [item.id]: value }))}
-                      placeholder="Chia sẻ cảm nhận về món ăn này"
-                      placeholderTextColor="#9CA3AF"
-                      multiline
-                      textAlignVertical="top"
-                      style={styles.commentInput}
-                    />
-                  )}
+                  <TextInput
+                    value={commentValues[item.id] || ''}
+                    editable={submittingRatingId !== item.id}
+                    onChangeText={(value) => setCommentValues((prev) => ({ ...prev, [item.id]: value }))}
+                    placeholder="Chia sẻ cảm nhận về món ăn này"
+                    placeholderTextColor="#9CA3AF"
+                    multiline
+                    textAlignVertical="top"
+                    style={styles.commentInput}
+                  />
 
                   {item.dishRatedAt ? (
                     <ThemedText style={styles.ratingMeta}>Đã đánh giá lúc: {formatDate(item.dishRatedAt)}</ThemedText>
                   ) : null}
 
-                  {!item.dishRating ? (
-                    <Pressable
-                      style={[styles.submitRatingBtn, submittingRatingId === item.id && styles.submitRatingBtnDisabled]}
-                      disabled={submittingRatingId === item.id}
-                      onPress={() => handleSubmitRating(item)}
-                    >
-                      <ThemedText style={styles.submitRatingBtnText}>
-                        {submittingRatingId === item.id ? 'Đang gửi...' : 'Gửi đánh giá'}
-                      </ThemedText>
-                    </Pressable>
-                  ) : null}
+                  <Pressable
+                    style={[styles.submitRatingBtn, submittingRatingId === item.id && styles.submitRatingBtnDisabled]}
+                    disabled={submittingRatingId === item.id}
+                    onPress={() => handleSubmitRating(item)}
+                  >
+                    <ThemedText style={styles.submitRatingBtnText}>
+                      {submittingRatingId === item.id
+                        ? (item.dishRating ? 'Đang cập nhật...' : 'Đang gửi...')
+                        : (item.dishRating ? 'Cập nhật đánh giá' : 'Gửi đánh giá')}
+                    </ThemedText>
+                  </Pressable>
                 </View>
               ) : null}
             </View>
@@ -562,19 +554,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: '#111827',
-  },
-  savedCommentBox: {
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  savedCommentText: {
-    fontSize: 14,
-    color: '#374151',
-    lineHeight: 20,
   },
   ratingMeta: {
     fontSize: 12,
