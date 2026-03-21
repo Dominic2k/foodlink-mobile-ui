@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { 
   StyleSheet, 
   ScrollView, 
@@ -7,7 +7,8 @@ import {
   FlatList, 
   Pressable, 
   TextInput,
-  ImageBackground
+  ImageBackground,
+  RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,6 +28,8 @@ import { useRouter } from 'expo-router';
 import { ThemedText } from '@/shared/components/common/ThemedText';
 import { ThemedView } from '@/shared/components/common/ThemedView';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { recommendationService } from '@/features/recommendation/services/recommendationService';
+import { RecommendationItem } from '@/features/recommendation/types';
 
 const { width } = Dimensions.get('window');
 
@@ -51,30 +54,9 @@ const HERO_DATA = [
   },
 ];
 
-const CATEGORIES = [
-  { id: '1', name: 'Lành mạnh', icon: 'leaf-outline' },
-  { id: '2', name: 'Nhanh gọn', icon: 'flash-outline' },
-  { id: '3', name: 'Chay', icon: 'nutrition-outline' },
-  { id: '4', name: 'Protein', icon: 'barbell-outline' },
-  { id: '5', name: 'Đồ uống', icon: 'beer-outline' },
-];
+// Removed mock CATEGORIES
 
-const FEATURED_RECIPES = [
-  {
-    id: '1',
-    name: 'Salad gà bơ Quinoa',
-    time: '20 phút',
-    calories: '450 kcal',
-    image: { uri: 'https://res.cloudinary.com/dx5f9qzgi/image/upload/v1773819982/hero_salad_swtplp.png' },
-  },
-  {
-    id: '2',
-    name: 'Phở Bò Gia Truyền',
-    time: '45 phút',
-    calories: '600 kcal',
-    image: { uri: 'https://res.cloudinary.com/dx5f9qzgi/image/upload/v1773819981/featured_pho_hb8k7n.png' },
-  },
-];
+// Removed mock FEATURED_RECIPES
 
 const HeroItem = ({ item, index, scrollX, router }: { item: typeof HERO_DATA[0], index: number, scrollX: SharedValue<number>, router: any }) => {
   const animatedStyle = useAnimatedStyle(() => {
@@ -117,6 +99,114 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const scrollX = useSharedValue(0);
+  const [topRatedDishes, setTopRatedDishes] = useState<RecommendationItem[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string; icon: string; color: string; bgColor: string }[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = useCallback(async () => {
+    const fetchTopRated = async () => {
+      try {
+        const response = await recommendationService.getRecommendations(0, 50);
+        const allDishes = response?.items || [];
+        let selectedDishes = allDishes
+          .filter(d => (d.ratingSummary?.totalRatings || 0) > 0)
+          .sort((a, b) => (b.ratingSummary?.averageRating || 0) - (a.ratingSummary?.averageRating || 0))
+          .slice(0, 2);
+
+        if (selectedDishes.length < 2) {
+          const needed = 2 - selectedDishes.length;
+          const selectedIds = new Set(selectedDishes.map(d => d.recipeId));
+          const remainingDishes = allDishes.filter(d => !selectedIds.has(d.recipeId));
+          const randomFill = [...remainingDishes].sort(() => 0.5 - Math.random()).slice(0, needed);
+          selectedDishes = [...selectedDishes, ...randomFill];
+        }
+
+        setTopRatedDishes(selectedDishes);
+      } catch (error) {
+        console.error('Failed to fetch top rated dishes:', error);
+      }
+    };
+
+    const fetchCategories = async () => {
+      try {
+        const options = await recommendationService.getFilterOptions();
+        const dishes = options.dishCategories || [];
+        const mapped = dishes.map((d, i) => {
+          let icon = 'restaurant-outline';
+          let color = '#C1766B';
+          let bgColor = '#FFF7F5';
+          
+          const lower = d.toLowerCase();
+          
+          if (lower.includes('chay') || lower.includes('rau') || lower.includes('salad')) {
+            icon = 'leaf-outline';
+            color = '#2C5C3F';
+            bgColor = '#E2F1E7';
+          } else if (lower.includes('uống') || lower.includes('nước ép') || lower.includes('trà') || lower.includes('sinh tố')) {
+            icon = 'water-outline';
+            color = '#1D4ED8';
+            bgColor = '#DBEAFE';
+          } else if (lower.includes('sáng') || lower.includes('bánh mì')) {
+            icon = 'cafe-outline';
+            color = '#B45309';
+            bgColor = '#FEF3C7';
+          } else if (lower.includes('vặt') || lower.includes('nhanh')) {
+            icon = 'fast-food-outline';
+            color = '#E11D48';
+            bgColor = '#FFE4E6';
+          } else if (lower.includes('ngọt') || lower.includes('tráng miệng') || lower.includes('bánh')) {
+            icon = 'ice-cream-outline';
+            color = '#9333EA';
+            bgColor = '#F3E8FF';
+          } else if (lower.includes('mặn') || lower.includes('cơm') || lower.includes('chính')) {
+            icon = 'flame-outline';
+            color = '#BE123C';
+            bgColor = '#FFE4E6';
+          } else if (lower.includes('canh') || lower.includes('súp')) {
+            icon = 'beaker-outline';
+            color = '#0369A1';
+            bgColor = '#E0F2FE';
+          } else if (lower.includes('nướng') || lower.includes('chiên') || lower.includes('hái sản')) {
+             icon = 'bonfire-outline';
+             color = '#C2410C';
+             bgColor = '#FFEDD5';
+          } else if (lower.includes('nước') || lower.includes('bún') || lower.includes('phở')) {
+             icon = 'color-fill-outline';
+             color = '#0D9488';
+             bgColor = '#CCFBF1';
+          } else {
+             const fallbacks = [
+               { icon: 'restaurant-outline', color: '#1D4ED8', bgColor: '#DBEAFE' },
+               { icon: 'pizza-outline', color: '#D97706', bgColor: '#FEF3C7' },
+               { icon: 'nutrition-outline', color: '#059669', bgColor: '#D1FAE5' },
+               { icon: 'grid-outline', color: '#4F46E5', bgColor: '#E0E7FF' }
+             ];
+             const rand = fallbacks[i % fallbacks.length];
+             icon = rand.icon;
+             color = rand.color;
+             bgColor = rand.bgColor;
+          }
+
+          return { id: String(i), name: d, icon, color, bgColor };
+        });
+        setCategories(mapped);
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+      }
+    };
+
+    await Promise.all([fetchTopRated(), fetchCategories()]);
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -125,7 +215,13 @@ export default function HomeScreen() {
   });
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={styles.container} 
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C1766B" colors={['#C1766B']} />
+      }
+    >
       {/* Header Section */}
       <ThemedView style={styles.header}>
         <View>
@@ -179,14 +275,19 @@ export default function HomeScreen() {
       {/* Categories */}
       <View style={styles.sectionHeader}>
         <ThemedText style={styles.sectionTitle}>Danh mục</ThemedText>
-        <Pressable><ThemedText style={styles.seeAll}>Tất cả</ThemedText></Pressable>
+        <Pressable onPress={() => router.push('/recommendation')}>
+          <ThemedText style={styles.seeAll}>Tất cả</ThemedText>
+        </Pressable>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-        {CATEGORIES.map((cat, index) => (
+        {categories.map((cat, index) => (
           <Animated.View key={cat.id} entering={FadeInRight.delay(index * 100).duration(600)}>
-            <Pressable style={styles.categoryBtn}>
-              <View style={styles.categoryIconContainer}>
-                <Ionicons name={cat.icon as any} size={24} color="#C1766B" />
+            <Pressable 
+              style={styles.categoryBtn}
+              onPress={() => router.push({ pathname: '/recommendation', params: { category: `dish___${cat.name}` } })}
+            >
+              <View style={[styles.categoryIconContainer, { backgroundColor: cat.bgColor }]}>
+                <Ionicons name={cat.icon as any} size={24} color={cat.color} />
               </View>
               <ThemedText style={styles.categoryName}>{cat.name}</ThemedText>
             </Pressable>
@@ -202,29 +303,39 @@ export default function HomeScreen() {
         </Pressable>
       </View>
       <View style={styles.featuredContainer}>
-        {FEATURED_RECIPES.map((recipe, index) => (
-          <Animated.View key={recipe.id} entering={FadeInDown.delay(600 + index * 100).duration(800)}>
-            <Pressable style={styles.recipeCard} onPress={() => router.push('/recommendation')}>
-              <Image source={recipe.image} style={styles.recipeImage} />
-              <View style={styles.recipeInfo}>
-                <ThemedText style={styles.recipeName}>{recipe.name}</ThemedText>
-                <View style={styles.recipeMeta}>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="time-outline" size={14} color="#9CA3AF" />
-                    <ThemedText style={styles.metaText}>{recipe.time}</ThemedText>
-                  </View>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="flame-outline" size={14} color="#9CA3AF" />
-                    <ThemedText style={styles.metaText}>{recipe.calories}</ThemedText>
+        {topRatedDishes.map((recipe, index) => {
+          const totalTime = (recipe.prepTimeMin || 0) + (recipe.cookTimeMin || 0);
+          const timeText = totalTime > 0 ? `${totalTime} phút` : '30 phút';
+          const caloriesText = recipe.nutritionSummary?.calories ? `${recipe.nutritionSummary.calories} kcal` : '--- kcal';
+          const imageUrl = recipe.imageUrl || 'https://res.cloudinary.com/dx5f9qzgi/image/upload/v1773819981/featured_pho_hb8k7n.png';
+
+          return (
+            <Animated.View key={recipe.recipeId} entering={FadeInDown.delay(600 + index * 100).duration(800)}>
+              <Pressable style={styles.recipeCard} onPress={() => router.push({ pathname: '/order-recommendation-detail', params: { recipeId: recipe.recipeId }})}>
+                <Image source={{ uri: imageUrl }} style={styles.recipeImage} />
+                <View style={styles.recipeInfo}>
+                  <ThemedText style={styles.recipeName}>{recipe.recipeName}</ThemedText>
+                  <View style={styles.recipeMeta}>
+                    <View style={styles.metaItem}>
+                      <Ionicons name="time-outline" size={14} color="#9CA3AF" />
+                      <ThemedText style={styles.metaText}>{timeText}</ThemedText>
+                    </View>
+                    <View style={styles.metaItem}>
+                      <Ionicons name="flame-outline" size={14} color="#9CA3AF" />
+                      <ThemedText style={styles.metaText}>{caloriesText}</ThemedText>
+                    </View>
                   </View>
                 </View>
-              </View>
-              <View style={styles.recipeAddBtn}>
-                <Ionicons name="add" size={20} color="#FFFFFF" />
-              </View>
-            </Pressable>
-          </Animated.View>
-        ))}
+                <Pressable 
+                  style={styles.recipeAddBtn}
+                  onPress={() => router.push({ pathname: '/checkout', params: { recipeId: recipe.recipeId, servings: '1' } })}
+                >
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
+                </Pressable>
+              </Pressable>
+            </Animated.View>
+          );
+        })}
       </View>
 
       {/* Health Tip Section */}

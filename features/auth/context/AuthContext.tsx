@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               isAuthenticated: false,
             });
           } else {
-            console.error('[Auth] Failed to load profile during init:', error);
+            console.log('[Auth] Failed to load profile during init:', error.message || error);
             setState(prev => ({ ...prev, isLoading: false }));
           }
         }
