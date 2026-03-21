@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
 import { ThemedText } from '@/shared/components/common/ThemedText';
 import { ThemedView } from '@/shared/components/common/ThemedView';
@@ -20,6 +20,7 @@ const FILTER_OPTIONS: { key: RecommendationStatusFilter; label: string }[] = [
 const DEFAULT_CATEGORY_OPTIONS = [{ key: 'all', label: 'Loại nguyên liệu: Tất cả' }];
 
 export default function RecommendationScreen() {
+  const params = useLocalSearchParams<{ category?: string }>();
   const [items, setItems] = useState<RecommendationItem[]>([]);
   const [page, setPage] = useState(0);
   const [hasNext, setHasNext] = useState(false);
@@ -27,7 +28,13 @@ export default function RecommendationScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedMap, setSelectedMap] = useState<Record<string, number>>({});
   const [statusFilter, setStatusFilter] = useState<RecommendationStatusFilter>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>(params.category || 'all');
+
+  useEffect(() => {
+    if (params.category && params.category !== categoryFilter) {
+      setCategoryFilter(params.category);
+    }
+  }, [params.category]);
   const [categoryOptions, setCategoryOptions] = useState<{ key: string; label: string }[]>(DEFAULT_CATEGORY_OPTIONS);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [openSelector, setOpenSelector] = useState<'status' | 'category' | null>(null);
@@ -88,13 +95,16 @@ export default function RecommendationScreen() {
     if (append) setLoadingMore(true);
     else setLoading(true);
 
+    const dishCategoryFilter = category.startsWith('dish___') ? category.replace('dish___', '') : 'all';
+    const ingredientCategoryFilter = category.startsWith('ingredient___') ? category.replace('ingredient___', '') : 'all';
+
     try {
       const data = await recommendationService.getRecommendations(
         targetPage,
         PAGE_SIZE,
         filter,
-        category,
-        'all',
+        ingredientCategoryFilter,
+        dishCategoryFilter,
         scoreMin,
         scoreMax,
         searchKeyword
@@ -116,11 +126,11 @@ export default function RecommendationScreen() {
       try {
         const data = await recommendationService.getFilterOptions();
         const ingredientOpts = (data.ingredientCategories ?? []).map((cat) => ({
-          key: cat,
+          key: `ingredient___${cat}`,
           label: `Nhóm nguyên liệu: ${formatCategoryLabel(cat)}`,
         }));
         const dishOpts = (data.dishCategories ?? []).map((cat) => ({
-          key: cat,
+          key: `dish___${cat}`,
           label: `Loại món: ${cat}`,
         }));
         setCategoryOptions([...DEFAULT_CATEGORY_OPTIONS, ...dishOpts, ...ingredientOpts]);
@@ -230,6 +240,7 @@ export default function RecommendationScreen() {
     setAppliedSearch(searchInput.trim());
     setAppliedScoreMin(parseScoreInput(scoreMinInput));
     setAppliedScoreMax(parseScoreInput(scoreMaxInput));
+    setShowFilterPanel(false);
   };
 
   const resetAdvancedFilters = () => {
@@ -239,6 +250,7 @@ export default function RecommendationScreen() {
     setAppliedSearch('');
     setAppliedScoreMin(undefined);
     setAppliedScoreMax(undefined);
+    setShowFilterPanel(false);
   };
 
   const handleOpenDetail = (recipeId: string) => {
