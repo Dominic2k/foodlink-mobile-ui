@@ -286,6 +286,7 @@ export default function OrderDetailScreen() {
 
           <View style={styles.divider} />
 
+          <ThemedText style={styles.infoLine}>Người nhận: {order.userFullName || '--'}</ThemedText>
           <ThemedText style={styles.infoLine}>Địa chỉ: {order.deliveryAddressText || '--'}</ThemedText>
           <ThemedText style={styles.infoLine}>Điện thoại: {order.deliveryPhone || '--'}</ThemedText>
           <ThemedText style={styles.infoLine}>Thanh toán: {order.paymentMethod || '--'}</ThemedText>

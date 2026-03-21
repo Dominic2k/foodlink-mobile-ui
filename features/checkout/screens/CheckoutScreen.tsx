@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View, Pressable } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, View, Pressable, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/features/auth/context/AuthContext';
 
 import { ThemedText } from '@/shared/components/common/ThemedText';
 import { ThemedView } from '@/shared/components/common/ThemedView';
@@ -16,11 +17,17 @@ import * as WebBrowser from 'expo-web-browser';
 export default function CheckoutScreen() {
   const { recipeId, selections, servings } = useLocalSearchParams<{ recipeId?: string, selections?: string, servings?: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   
   const [item, setItem] = useState<RecommendationItem | null>(null);
   const [editableIngredients, setEditableIngredients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Delivery Info States
+  const [deliveryPhone, setDeliveryPhone] = useState(user?.phone || '');
+  const [deliveryAddressText, setDeliveryAddressText] = useState(user?.address || '');
+  const [note, setNote] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -89,6 +96,11 @@ export default function CheckoutScreen() {
   const handlePayment = async () => {
     if (editableIngredients.length === 0) return;
 
+    if (!deliveryPhone.trim() || !deliveryAddressText.trim()) {
+      Alert.alert("Thiếu thông tin", "Vui lòng nhập điền đầy đủ Số điện thoại và Địa chỉ giao hàng trước khi thanh toán.");
+      return;
+    }
+
     try {
       setSubmitting(true);
       const actualTotal = editableIngredients.reduce((sum, ing) => sum + (ing.totalPrice ?? 0), 0);
@@ -138,10 +150,10 @@ export default function CheckoutScreen() {
       }));
 
       const request: OrderRequest = {
-        deliveryAddressText: "Địa chỉ mặc định (Stripe Checkout)",
-        deliveryPhone: "0123456789", 
+        deliveryAddressText: deliveryAddressText.trim(),
+        deliveryPhone: deliveryPhone.trim(), 
         paymentMethod: "STRIPE",
-        note: `Đơn hàng đã thanh toán qua Stripe Checkout: ${item?.recipeName || 'Nhiều món'}`,
+        note: note.trim() ? note.trim() : `Đơn hàng đã thanh toán qua Stripe Checkout: ${item?.recipeName || 'Nhiều món'}`,
         items: orderItems.map((oi) => ({
           ...oi,
           customIngredients: (orderItems.length === 1 || (recipeId && oi.recipeId === recipeId)) ? customIngredients : undefined
@@ -239,6 +251,38 @@ export default function CheckoutScreen() {
             </View>
           ))}
         </ThemedView>
+
+        <ThemedView style={[styles.card, { marginTop: 16 }]}>
+          <ThemedText style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 8 }}>Thông tin giao hàng</ThemedText>
+          
+          <ThemedText style={styles.inputLabel}>Số điện thoại *</ThemedText>
+          <TextInput
+            style={styles.textInput}
+            value={deliveryPhone}
+            onChangeText={setDeliveryPhone}
+            placeholder="Nhập số điện thoại nhận hàng"
+            keyboardType="phone-pad"
+          />
+
+          <ThemedText style={styles.inputLabel}>Địa chỉ giao hàng *</ThemedText>
+          <TextInput
+            style={styles.textInput}
+            value={deliveryAddressText}
+            onChangeText={setDeliveryAddressText}
+            placeholder="Nhập số nhà, đường, phường, quận"
+            multiline
+          />
+
+          <ThemedText style={styles.inputLabel}>Ghi chú (Tùy chọn)</ThemedText>
+          <TextInput
+            style={[styles.textInput, { minHeight: 60, textAlignVertical: 'top' }]}
+            value={note}
+            onChangeText={setNote}
+            placeholder="Chi tiết địa điểm hoặc yêu cầu giao hàng..."
+            multiline
+          />
+        </ThemedView>
+
       </ScrollView>
 
       <View style={styles.footer}>
@@ -423,5 +467,22 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4B5563',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    backgroundColor: '#FAFAF9',
+    color: '#111827',
   },
 });
