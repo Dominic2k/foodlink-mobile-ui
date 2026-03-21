@@ -6,6 +6,8 @@ export interface User {
   username?: string;
   role?: string;
   isAdmin?: boolean;
+  phone?: string;
+  address?: string;
 }
 
 export interface LoginRequest {
