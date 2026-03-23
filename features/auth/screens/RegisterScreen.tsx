@@ -32,7 +32,7 @@ export default function RegisterScreen() {
     const passwordError = validation.getPasswordError(password);
 
     if (fullNameError || emailError || passwordError) {
-      Alert.alert('Validation Error', fullNameError || emailError || passwordError || '');
+      Alert.alert('Lỗi xác thực', fullNameError || emailError || passwordError || '');
       return;
     }
 
@@ -40,7 +40,7 @@ export default function RegisterScreen() {
       setIsSubmitting(true);
       await register(fullName, email, password);
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.message || 'Something went wrong. Please try again.');
+      Alert.alert('Đăng ký thất bại', error.message || 'Đã xảy ra lỗi. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
     }
@@ -74,19 +74,19 @@ export default function RegisterScreen() {
             {/* Header */}
             <View style={authStyles.headerContainer}>
               <View style={styles.welcomeRow}>
-                <Text style={authStyles.welcomeText}>Create Account</Text>
+                <Text style={authStyles.welcomeText}>Tạo tài khoản</Text>
                 <Text style={styles.welcomeEmoji}>🍜</Text>
               </View>
-              <Text style={authStyles.subtitleText}>Join FoodLink today</Text>
+              <Text style={authStyles.subtitleText}>Tham gia FoodLink ngay hôm nay</Text>
             </View>
 
             {/* Full Name Input */}
             <View style={authStyles.inputContainer}>
-              <Text style={authStyles.inputLabel}>Full Name</Text>
+              <Text style={authStyles.inputLabel}>Họ và tên</Text>
               <View style={authStyles.inputWrapper}>
                 <TextInput
                   style={authStyles.input}
-                  placeholder="Enter your full name"
+                  placeholder="Nhập họ và tên"
                   placeholderTextColor={AuthColors.inputPlaceholder}
                   value={fullName}
                   onChangeText={setFullName}
@@ -102,7 +102,7 @@ export default function RegisterScreen() {
               <View style={authStyles.inputWrapper}>
                 <TextInput
                   style={authStyles.input}
-                  placeholder="Enter your email"
+                  placeholder="Nhập email của bạn"
                   placeholderTextColor={AuthColors.inputPlaceholder}
                   value={email}
                   onChangeText={setEmail}
@@ -115,11 +115,11 @@ export default function RegisterScreen() {
 
             {/* Password Input */}
             <View style={authStyles.inputContainer}>
-              <Text style={authStyles.inputLabel}>Password</Text>
+              <Text style={authStyles.inputLabel}>Mật khẩu</Text>
               <View style={authStyles.inputWrapper}>
                 <TextInput
                   style={authStyles.input}
-                  placeholder="Enter your password"
+                  placeholder="Nhập mật khẩu của bạn"
                   placeholderTextColor={AuthColors.inputPlaceholder}
                   value={password}
                   onChangeText={setPassword}
@@ -153,17 +153,17 @@ export default function RegisterScreen() {
               {(isSubmitting || authLoading) ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={authStyles.primaryButtonText}>Register</Text>
+                <Text style={authStyles.primaryButtonText}>Đăng ký</Text>
               )}
             </TouchableOpacity>
 
             {/* Login Link */}
             <View style={authStyles.bottomLinkContainer}>
               <Text style={authStyles.bottomLinkText}>
-                Already have an account?
+                Đã có tài khoản?
               </Text>
               <TouchableOpacity onPress={handleLogin}>
-                <Text style={authStyles.bottomLinkHighlight}>Login</Text>
+                <Text style={authStyles.bottomLinkHighlight}>Đăng nhập</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

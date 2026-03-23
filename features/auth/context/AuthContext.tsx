@@ -2,8 +2,8 @@
  * Auth Context for global authentication state management
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Alert } from 'react-native';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { Alert, AppState, AppStateStatus } from 'react-native';
 import { router } from 'expo-router';
 import { User, AuthState } from '@/features/auth/types';
 import { UserProfile } from '@/features/profile/types';
@@ -30,10 +30,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: false,
   });
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const sessionStartRef = useRef<number>(Date.now());
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   useEffect(() => {
     loadStoredAuth();
   }, []);
+
+  // Session duration tracking via AppState
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (
+        appStateRef.current.match(/active/) &&
+        nextAppState.match(/inactive|background/) &&
+        state.isAuthenticated
+      ) {
+        // App going to background — report session duration
+        const durationSeconds = Math.round((Date.now() - sessionStartRef.current) / 1000);
+        if (durationSeconds >= 5) {
+          api.post('/api/sessions', { durationSeconds }).catch(() => {});
+        }
+      }
+
+      if (
+        appStateRef.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        // App coming to foreground — reset session start
+        sessionStartRef.current = Date.now();
+      }
+
+      appStateRef.current = nextAppState;
+    });
+
+    return () => subscription.remove();
+  }, [state.isAuthenticated]);
 
   const loadStoredAuth = async () => {
     try {
@@ -50,22 +81,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const res = await userService.getProfile();
           setProfile(res.data);
-        } catch {
-          // Token might be expired, clear auth
-          api.setToken(null);
-          await storage.removeToken();
-          setState({
-            user: null,
-            token: null,
-            isLoading: false,
-            isAuthenticated: false,
-          });
+          // Record app visit (fire-and-forget)
+          api.post('/api/visits', {}).catch(() => {});
+        } catch (error: any) {
+          // Token invalid/expired -> only clear if status is 401
+          // Otherwise keep token and assume it's a transient network issue
+          if (error.message && error.message.includes('401')) {
+            console.warn('[Auth] Token expired or invalid (401), logging out');
+            api.setToken(null);
+            await storage.removeToken();
+            setProfile(null);
+            setState({
+              user: null,
+              token: null,
+              isLoading: false,
+              isAuthenticated: false,
+            });
+          } else {
+            console.log('[Auth] Failed to load profile during init:', error.message || error);
+            setState(prev => ({ ...prev, isLoading: false }));
+          }
         }
       } else {
         setState(prev => ({ ...prev, isLoading: false }));
       }
     } catch (error) {
+      api.setToken(null);
       await storage.removeToken();
+      setProfile(null);
       setState({
         user: null,
         token: null,
@@ -91,6 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const profileRes = await userService.getProfile();
       setProfile(profileRes.data);
     } catch {}
+    // Record app visit (fire-and-forget)
+    api.post('/api/visits', {}).catch(() => {});
     router.replace('/(tabs)' as any);
   };
 

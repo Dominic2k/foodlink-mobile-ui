@@ -31,7 +31,7 @@ export default function LoginScreen() {
     const passwordError = validation.getPasswordError(password);
 
     if (emailError || passwordError) {
-      Alert.alert('Validation Error', emailError || passwordError || '');
+      Alert.alert('Lỗi xác thực', emailError || passwordError || '');
       return;
     }
 
@@ -39,7 +39,7 @@ export default function LoginScreen() {
       setIsSubmitting(true);
       await login(email, password);
     } catch (error: any) {
-      Alert.alert('Login Failed', error.message || 'Invalid email or password.');
+      Alert.alert('Đăng nhập thất bại', error.message || 'Email hoặc mật khẩu không đúng.');
     } finally {
       setIsSubmitting(false);
     }
@@ -50,8 +50,7 @@ export default function LoginScreen() {
   };
 
   const handleForgotPassword = () => {
-    // TODO: Implement forgot password logic
-    console.log('Forgot password');
+    router.push('/(auth)/forgot-password' as any);
   };
 
   return (
@@ -78,11 +77,11 @@ export default function LoginScreen() {
             {/* Header */}
             <View style={authStyles.headerContainer}>
               <View style={styles.welcomeRow}>
-                <Text style={authStyles.welcomeText}>Welcome Foodlink</Text>
+                <Text style={authStyles.welcomeText}>Chào mừng đến Foodlink</Text>
                 {/* TODO: Add small icon here if needed */}
                 <Text style={styles.welcomeEmoji}>🍜</Text>
               </View>
-              <Text style={authStyles.subtitleText}>Access your account</Text>
+              <Text style={authStyles.subtitleText}>Đăng nhập tài khoản của bạn</Text>
             </View>
 
             {/* Email Input */}
@@ -91,7 +90,7 @@ export default function LoginScreen() {
               <View style={authStyles.inputWrapper}>
                 <TextInput
                   style={authStyles.input}
-                  placeholder="Enter your email"
+                  placeholder="Nhập email của bạn"
                   placeholderTextColor={AuthColors.inputPlaceholder}
                   value={email}
                   onChangeText={setEmail}
@@ -104,11 +103,11 @@ export default function LoginScreen() {
 
             {/* Password Input */}
             <View style={authStyles.inputContainer}>
-              <Text style={authStyles.inputLabel}>Password</Text>
+              <Text style={authStyles.inputLabel}>Mật khẩu</Text>
               <View style={authStyles.inputWrapper}>
                 <TextInput
                   style={authStyles.input}
-                  placeholder="Enter your password"
+                  placeholder="Nhập mật khẩu của bạn"
                   placeholderTextColor={AuthColors.inputPlaceholder}
                   value={password}
                   onChangeText={setPassword}
@@ -133,7 +132,7 @@ export default function LoginScreen() {
               style={authStyles.forgotPassword}
               onPress={handleForgotPassword}
             >
-              <Text style={authStyles.forgotPasswordText}>Forgot Password?</Text>
+              <Text style={authStyles.forgotPasswordText}>Quên mật khẩu?</Text>
             </TouchableOpacity>
 
             {/* Login Button */}
@@ -149,17 +148,17 @@ export default function LoginScreen() {
               {(isSubmitting || authLoading) ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={authStyles.primaryButtonText}>Login</Text>
+                <Text style={authStyles.primaryButtonText}>Đăng nhập</Text>
               )}
             </TouchableOpacity>
 
             {/* Sign Up Link */}
             <View style={authStyles.bottomLinkContainer}>
               <Text style={authStyles.bottomLinkText}>
-                Don't have an account?
+                Chưa có tài khoản?
               </Text>
               <TouchableOpacity onPress={handleSignUp}>
-                <Text style={authStyles.bottomLinkHighlight}>Sign up</Text>
+                <Text style={authStyles.bottomLinkHighlight}>Đăng ký</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

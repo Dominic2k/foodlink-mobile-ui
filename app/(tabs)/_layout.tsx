@@ -34,28 +34,70 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Trang chủ',
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="house.fill" color={color} />,
         }}
       />
       <Tabs.Screen
         name="recommendation"
         options={{
-          title: 'Recommend',
+          title: 'Gợi ý',
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="fork.knife" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="recommendation-detail"
+        options={{
+          href: null,
+          headerShown: true,
+          title: 'Chi tiết đề xuất',
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                  return;
+                }
+                router.navigate('/recommendation');
+              }}
+              style={{ marginLeft: 15 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="health"
+        options={{
+          title: 'Sức khỏe',
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="heart.text.square.fill" color={color} />,
         }}
       />
       <Tabs.Screen
         name="notification"
         options={{
-          title: 'Notification',
+          title: 'Thông báo',
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="bell.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="health-detail"
+        options={{
+          href: null,
+          headerShown: true,
+          title: 'Chi tiết sức khỏe',
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.navigate('/health')} style={{ marginLeft: 15 }}>
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: 'Hồ sơ',
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="person.fill" color={color} />,
         }}
       />

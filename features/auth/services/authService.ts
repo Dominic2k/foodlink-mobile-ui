@@ -8,6 +8,9 @@ import {
   RegisterRequest,
   RegisterApiResponse,
   LoginApiResponse,
+  ChangePasswordRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
 } from '@/features/auth/types';
 import { BaseResponse } from '@/core/api/types';
 
@@ -22,5 +25,17 @@ export const authService = {
 
   async logout(token: string): Promise<BaseResponse<string>> {
     return api.postWithAuth<BaseResponse<string>>('/auth/logout', {}, token);
+  },
+
+  async changePassword(data: ChangePasswordRequest): Promise<BaseResponse<string>> {
+    return api.put<BaseResponse<string>>('/auth/change-password', data);
+  },
+
+  async forgotPassword(data: ForgotPasswordRequest): Promise<BaseResponse<string>> {
+    return api.post<BaseResponse<string>>('/auth/forgot-password', data);
+  },
+
+  async resetPassword(data: ResetPasswordRequest): Promise<BaseResponse<string>> {
+    return api.post<BaseResponse<string>>('/auth/reset-password', data);
   },
 };

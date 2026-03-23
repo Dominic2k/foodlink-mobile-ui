@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, ScrollView, View, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { StyleSheet, ScrollView, View, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 
@@ -95,7 +95,7 @@ export default function ProfileScreen() {
         <View style={styles.avatarSection}>
           <View style={styles.avatarCircle}>
             {profile?.avatarUrl ? (
-              <ThemedText style={styles.avatarInitials}>{initials}</ThemedText>
+              <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
             ) : (
               <ThemedText style={styles.avatarInitials}>{initials}</ThemedText>
             )}
@@ -123,6 +123,26 @@ export default function ProfileScreen() {
                 <Ionicons name="create-outline" size={20} color={BRAND} />
               </View>
               <ThemedText style={styles.menuText}>Chỉnh sửa hồ sơ</ThemedText>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#999" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/change-password' as any)}>
+            <View style={styles.menuLeft}>
+              <View style={[styles.menuIconBg, { backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}>
+                <Ionicons name="lock-closed-outline" size={20} color="#EF4444" />
+              </View>
+              <ThemedText style={styles.menuText}>Đổi mật khẩu</ThemedText>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#999" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/order-history' as any)}>
+            <View style={styles.menuLeft}>
+              <View style={[styles.menuIconBg, { backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}>
+                <Ionicons name="receipt-outline" size={20} color="#F59E0B" />
+              </View>
+              <ThemedText style={styles.menuText}>Lịch sử đơn hàng</ThemedText>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#999" />
           </TouchableOpacity>
@@ -222,6 +242,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarInitials: {
     fontSize: 32,

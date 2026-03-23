@@ -5,20 +5,27 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/shared/hooks/useColorScheme';
 import { AuthProvider } from '@/features/auth/context/AuthContext';
+import { RecommendationRefreshProvider } from '@/features/recommendation/context/RecommendationRefreshContext';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
     <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal', headerShown: true }} />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <RecommendationRefreshProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen
+              name="order-recommendation-detail"
+              options={{ headerShown: true, title: 'Chi tiết đề xuất' }}
+            />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal', headerShown: true }} />
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </RecommendationRefreshProvider>
     </AuthProvider>
   );
 }

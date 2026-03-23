@@ -9,20 +9,20 @@ export default function NotificationScreen() {
     <ScrollView style={styles.container}>
       <ThemedView style={styles.content}>
         <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title">Notifications</ThemedText>
+          <ThemedText type="title">Thông báo</ThemedText>
           <ThemedText style={styles.emoji}>🔔</ThemedText>
         </ThemedView>
 
         <ThemedText style={styles.subtitle}>
-          Stay updated with the latest
+          Cập nhật tin tức mới nhất
         </ThemedText>
 
         {/* Empty state */}
         <View style={styles.emptyState}>
           <Ionicons name="notifications-off-outline" size={64} color="#C1766B" />
-          <ThemedText style={styles.emptyTitle}>No Notifications</ThemedText>
+          <ThemedText style={styles.emptyTitle}>Không có thông báo</ThemedText>
           <ThemedText style={styles.emptyText}>
-            You're all caught up! New notifications will appear here when you receive them.
+            Bạn đã xem hết! Thông báo mới sẽ xuất hiện ở đây khi có.
           </ThemedText>
         </View>
       </ThemedView>

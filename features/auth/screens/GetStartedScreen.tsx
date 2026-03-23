@@ -29,15 +29,8 @@ export default function GetStartedScreen() {
       <View style={authStyles.contentContainer}>
         {/* Circle Image - Replace with your actual food image */}
         <View style={styles.circleImageContainer}>
-          {/* 
-            TODO: Replace this placeholder with your actual image
-            Example: <Image source={require('@/assets/images/food-circle.png')} style={styles.circleImage} />
-          */}
-          <View style={styles.placeholderCircle}>
-            <Text style={styles.placeholderText}>Thay bằng ảnh{'\n'}món ăn tròn</Text>
-          </View>
+          <Image source={{ uri: 'https://res.cloudinary.com/dx5f9qzgi/image/upload/v1773820687/onboarding_hero_cykobs.jpg' }} style={styles.circleImage} />
         </View>
-
         {/* Logo Text */}
         <Text style={authStyles.logoText}>FoodLink</Text>
 
@@ -47,7 +40,7 @@ export default function GetStartedScreen() {
           onPress={handleGetStarted}
           activeOpacity={0.8}
         >
-          <Text style={authStyles.secondaryButtonText}>Get Started</Text>
+          <Text style={authStyles.secondaryButtonText}>Bắt đầu</Text>
         </TouchableOpacity>
       </View>
     </LinearGradient>

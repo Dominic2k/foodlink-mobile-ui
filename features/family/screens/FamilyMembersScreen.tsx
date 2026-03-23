@@ -78,6 +78,19 @@ export default function FamilyMembersScreen() {
               ))}
             </View>
           )}
+          {item.allergies && item.allergies.length > 0 && (
+            <View style={styles.badgeContainer}>
+              {item.allergies.map((a: any) => {
+                const severityColor = a.severity === 'severe' ? '#EF5350' : a.severity === 'medium' ? '#FFA726' : '#66BB6A';
+                return (
+                  <View key={a.id} style={styles.allergyBadge}>
+                    <View style={[styles.severityDot, { backgroundColor: severityColor }]} />
+                    <Text style={styles.allergyText}>{a.ingredientName}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
         <MaterialCommunityIcons name="chevron-right" size={24} color="#BDBDBD" />
       </TouchableOpacity>
@@ -183,6 +196,27 @@ const styles = StyleSheet.create({
   conditionText: {
     fontSize: 10,
     color: '#EF6C00',
+    fontWeight: '600',
+  },
+  allergyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFEBEE',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 6,
+    marginBottom: 4,
+  },
+  severityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 4,
+  },
+  allergyText: {
+    fontSize: 10,
+    color: '#C62828',
     fontWeight: '600',
   },
   emptyContainer: {
